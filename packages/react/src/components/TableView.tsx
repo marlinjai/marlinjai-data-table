@@ -60,7 +60,10 @@ const COLUMN_TYPES: { value: ColumnType; label: string; icon: string }[] = [
   { value: 'select', label: 'Select', icon: '▼' },
   { value: 'multi_select', label: 'Multi-select', icon: '▼▼' },
   { value: 'url', label: 'URL', icon: '🔗' },
+  { value: 'file', label: 'Files & media', icon: '📎' },
+  { value: 'formula', label: 'Formula', icon: 'ƒ' },
   { value: 'relation', label: 'Relation', icon: '↔' },
+  { value: 'rollup', label: 'Rollup', icon: '∑' },
 ];
 
 export function TableView({

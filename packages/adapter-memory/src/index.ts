@@ -982,6 +982,48 @@ export class MemoryAdapter extends BaseDatabaseAdapter {
       }
     }
 
+    // =========================================================================
+    // Create default views for both tables
+    // =========================================================================
+
+    // Default views for Receipts table
+    await this.createView({
+      tableId: receiptsTable.id,
+      name: 'Table',
+      type: 'table',
+      isDefault: true,
+    });
+
+    await this.createView({
+      tableId: receiptsTable.id,
+      name: 'Board',
+      type: 'board',
+      config: {
+        boardConfig: {
+          groupByColumnId: statusCol.id,
+        },
+      },
+    });
+
+    await this.createView({
+      tableId: receiptsTable.id,
+      name: 'Calendar',
+      type: 'calendar',
+      config: {
+        calendarConfig: {
+          dateColumnId: dateCol.id,
+        },
+      },
+    });
+
+    // Default view for Projects table
+    await this.createView({
+      tableId: projectsTable.id,
+      name: 'Table',
+      type: 'table',
+      isDefault: true,
+    });
+
     return {
       tableId: receiptsTable.id,
       projectsTableId: projectsTable.id,
