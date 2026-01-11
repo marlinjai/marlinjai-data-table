@@ -7,7 +7,12 @@
       "Bash(npx tsc:*)",
       "Bash(npm run build:*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git branch:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: Notion-like data table component library\n\nFeatures:\n- Core types and database adapter interface\n- Formula engine with 50+ built-in functions\n- Rollup engine with 13 aggregation types\n- React components \\(TableView, BoardView, CalendarView\\)\n- ViewSwitcher for multiple view support\n- Relation cells for linking rows between tables\n- Memory adapter for testing\n- D1 adapter skeleton for Cloudflare\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(gh repo create:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nConfigure packages for private npm publishing\n\n- Add publishConfig with restricted access\n- Add repository, author, license fields\n- Ready for npm publish\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)"
     ]
   }
 }

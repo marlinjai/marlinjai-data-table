@@ -2,6 +2,16 @@
   "name": "@marlinjai/data-table-adapter-memory",
   "version": "0.1.0",
   "description": "In-memory adapter for @marlinjai/data-table (testing/demos)",
+  "author": "marlinjai",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marlinjai/marlinjai-data-table.git",
+    "directory": "packages/adapter-memory"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

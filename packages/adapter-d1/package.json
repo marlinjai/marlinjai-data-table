@@ -2,6 +2,16 @@
   "name": "@marlinjai/data-table-adapter-d1",
   "version": "0.1.0",
   "description": "Cloudflare D1 adapter for @marlinjai/data-table",
+  "author": "marlinjai",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marlinjai/marlinjai-data-table.git",
+    "directory": "packages/adapter-d1"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

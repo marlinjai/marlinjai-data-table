@@ -2,6 +2,16 @@
   "name": "@marlinjai/data-table-core",
   "version": "0.1.0",
   "description": "Core types and interfaces for Notion-like data table",
+  "author": "marlinjai",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marlinjai/marlinjai-data-table.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
