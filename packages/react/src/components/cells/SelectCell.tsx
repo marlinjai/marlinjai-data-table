@@ -1,0 +1,462 @@
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import type { SelectOption } from '@marlinjai/data-table-core';
+
+export interface SelectCellProps {
+  value: string | null;
+  onChange: (value: string | null) => void;
+  options: SelectOption[];
+  readOnly?: boolean;
+  onCreateOption?: (name: string, color?: string) => Promise<SelectOption>;
+  onUpdateOption?: (optionId: string, updates: { name?: string; color?: string }) => Promise<SelectOption>;
+  onDeleteOption?: (optionId: string) => Promise<void>;
+}
+
+const DEFAULT_COLORS: Record<string, { bg: string; text: string }> = {
+  gray: { bg: '#e5e7eb', text: '#374151' },
+  red: { bg: '#fee2e2', text: '#991b1b' },
+  orange: { bg: '#ffedd5', text: '#9a3412' },
+  yellow: { bg: '#fef3c7', text: '#92400e' },
+  green: { bg: '#dcfce7', text: '#166534' },
+  blue: { bg: '#dbeafe', text: '#1e40af' },
+  purple: { bg: '#f3e8ff', text: '#6b21a8' },
+  pink: { bg: '#fce7f3', text: '#9d174d' },
+  brown: { bg: '#fae5d3', text: '#7c4a03' },
+};
+
+const COLOR_OPTIONS = Object.keys(DEFAULT_COLORS);
+
+function getColorStyles(color?: string): { bg: string; text: string } {
+  if (!color) return DEFAULT_COLORS.gray;
+  return DEFAULT_COLORS[color] ?? DEFAULT_COLORS.gray;
+}
+
+export function SelectCell({
+  value,
+  onChange,
+  options,
+  readOnly,
+  onCreateOption,
+  onUpdateOption,
+  onDeleteOption,
+}: SelectCellProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [newOptionName, setNewOptionName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [editingOption, setEditingOption] = useState<SelectOption | null>(null);
+  const [editName, setEditName] = useState('');
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const editPopoverRef = useRef<HTMLDivElement>(null);
+  const selectedOption = options.find((opt) => opt.id === value);
+
+  // Update dropdown position when opening
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + 2,
+        left: rect.left,
+      });
+    }
+  }, [isOpen]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const isOutsideContainer = containerRef.current && !containerRef.current.contains(target);
+      const isOutsideDropdown = !dropdownRef.current || !dropdownRef.current.contains(target);
+      const isOutsideEditPopover = !editPopoverRef.current || !editPopoverRef.current.contains(target);
+
+      if (isOutsideContainer && isOutsideDropdown && isOutsideEditPopover) {
+        setIsOpen(false);
+        setEditingOption(null);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen]);
+
+  const handleClick = useCallback(() => {
+    if (!readOnly) {
+      setIsOpen((prev) => !prev);
+      if (isOpen) {
+        setEditingOption(null);
+      }
+    }
+  }, [readOnly, isOpen]);
+
+  const handleSelect = useCallback(
+    (optionId: string | null) => {
+      onChange(optionId);
+      setIsOpen(false);
+      setEditingOption(null);
+    },
+    [onChange]
+  );
+
+  const handleCreateOption = useCallback(async () => {
+    if (!newOptionName.trim() || !onCreateOption || isCreating) return;
+
+    setIsCreating(true);
+    try {
+      const randomColor = COLOR_OPTIONS[Math.floor(Math.random() * COLOR_OPTIONS.length)];
+      const newOption = await onCreateOption(newOptionName.trim(), randomColor);
+      onChange(newOption.id);
+      setNewOptionName('');
+      setIsOpen(false);
+    } finally {
+      setIsCreating(false);
+    }
+  }, [newOptionName, onCreateOption, isCreating, onChange]);
+
+  const handleEditClick = useCallback((e: React.MouseEvent, option: SelectOption) => {
+    e.stopPropagation();
+    setEditingOption(option);
+    setEditName(option.name);
+  }, []);
+
+  const handleColorChange = useCallback(async (color: string) => {
+    if (!editingOption || !onUpdateOption) return;
+    await onUpdateOption(editingOption.id, { color });
+    setEditingOption({ ...editingOption, color });
+  }, [editingOption, onUpdateOption]);
+
+  const handleNameSave = useCallback(async () => {
+    if (!editingOption || !onUpdateOption || !editName.trim()) return;
+    if (editName.trim() !== editingOption.name) {
+      await onUpdateOption(editingOption.id, { name: editName.trim() });
+    }
+  }, [editingOption, onUpdateOption, editName]);
+
+  const handleDeleteOption = useCallback(async () => {
+    if (!editingOption || !onDeleteOption) return;
+    await onDeleteOption(editingOption.id);
+    // If this was the selected option, clear the value
+    if (value === editingOption.id) {
+      onChange(null);
+    }
+    setEditingOption(null);
+  }, [editingOption, onDeleteOption, value, onChange]);
+
+  const colors = getColorStyles(selectedOption?.color);
+
+  return (
+    <div
+      ref={containerRef}
+      className="dt-cell-select"
+      style={{
+        position: 'relative',
+        padding: '4px 8px',
+        minHeight: '24px',
+      }}
+    >
+      <div
+        onClick={handleClick}
+        style={{
+          cursor: readOnly ? 'default' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+        }}
+      >
+        {selectedOption ? (
+          <span
+            style={{
+              display: 'inline-block',
+              padding: '2px 8px',
+              borderRadius: '4px',
+              fontSize: '13px',
+              backgroundColor: colors.bg,
+              color: colors.text,
+            }}
+          >
+            {selectedOption.name}
+          </span>
+        ) : (
+          <span style={{ color: '#999' }}>Select...</span>
+        )}
+      </div>
+
+      {/* Main dropdown - rendered via portal for proper z-index */}
+      {isOpen && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{
+            position: 'fixed',
+            top: dropdownPos.top,
+            left: dropdownPos.left,
+            zIndex: 9999,
+            minWidth: '220px',
+            maxHeight: '300px',
+            overflowY: 'auto',
+            backgroundColor: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '6px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          }}
+        >
+          {/* Search/Create input */}
+          {onCreateOption && (
+            <div style={{ padding: '8px', borderBottom: '1px solid #e5e7eb' }}>
+              <input
+                type="text"
+                value={newOptionName}
+                onChange={(e) => setNewOptionName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleCreateOption();
+                  }
+                  e.stopPropagation();
+                }}
+                onClick={(e) => e.stopPropagation()}
+                placeholder="Search or create option..."
+                style={{
+                  width: '100%',
+                  padding: '6px 8px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '4px',
+                  fontSize: '13px',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Clear selection */}
+          <div
+            onClick={() => handleSelect(null)}
+            style={{
+              padding: '8px 12px',
+              cursor: 'pointer',
+              color: '#999',
+              fontSize: '13px',
+              borderBottom: options.length > 0 ? '1px solid #e5e7eb' : 'none',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f3f4f6')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+          >
+            Clear selection
+          </div>
+
+          {/* Options list */}
+          {options.map((option) => {
+            const optColors = getColorStyles(option.color);
+            const isEditing = editingOption?.id === option.id;
+            return (
+              <div
+                key={option.id}
+                onClick={() => handleSelect(option.id)}
+                style={{
+                  padding: '6px 12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: isEditing ? '#f3f4f6' : 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                  const btn = e.currentTarget.querySelector('.edit-btn') as HTMLElement;
+                  if (btn) btn.style.opacity = '1';
+                }}
+                onMouseLeave={(e) => {
+                  if (!isEditing) e.currentTarget.style.backgroundColor = 'transparent';
+                  const btn = e.currentTarget.querySelector('.edit-btn') as HTMLElement;
+                  if (btn && !isEditing) btn.style.opacity = '0';
+                }}
+              >
+                <span
+                  style={{
+                    display: 'inline-block',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '13px',
+                    backgroundColor: optColors.bg,
+                    color: optColors.text,
+                  }}
+                >
+                  {option.name}
+                </span>
+                {(onUpdateOption || onDeleteOption) && (
+                  <button
+                    className="edit-btn"
+                    onClick={(e) => handleEditClick(e, option)}
+                    style={{
+                      padding: '2px 6px',
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      opacity: isEditing ? '1' : '0',
+                      color: '#6b7280',
+                      fontSize: '14px',
+                      transition: 'opacity 0.15s',
+                    }}
+                  >
+                    •••
+                  </button>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Create new option hint */}
+          {newOptionName.trim() && onCreateOption && !options.some(o => o.name.toLowerCase() === newOptionName.toLowerCase()) && (
+            <div
+              onClick={handleCreateOption}
+              style={{
+                padding: '8px 12px',
+                cursor: 'pointer',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#2563eb',
+                fontSize: '13px',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f3f4f6')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              <span>+</span>
+              <span>Create "{newOptionName}"</span>
+            </div>
+          )}
+        </div>,
+        document.body
+      )}
+
+      {/* Edit popover (second layer) - also via portal */}
+      {editingOption && createPortal(
+        <div
+          ref={editPopoverRef}
+          style={{
+            position: 'fixed',
+            top: dropdownPos.top,
+            left: dropdownPos.left + 230,
+            zIndex: 10000,
+            width: '200px',
+            backgroundColor: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '6px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Option name input */}
+          <div style={{ padding: '8px', borderBottom: '1px solid #e5e7eb' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '4px 8px',
+                backgroundColor: getColorStyles(editingOption.color).bg,
+                borderRadius: '4px',
+              }}
+            >
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onBlur={handleNameSave}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleNameSave();
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  background: 'transparent',
+                  fontSize: '13px',
+                  color: getColorStyles(editingOption.color).text,
+                  outline: 'none',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Delete button */}
+          {onDeleteOption && (
+            <div
+              onClick={handleDeleteOption}
+              style={{
+                padding: '8px 12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#ef4444',
+                fontSize: '13px',
+                borderBottom: '1px solid #e5e7eb',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#fef2f2')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              <span>🗑</span>
+              <span>Delete</span>
+            </div>
+          )}
+
+          {/* Color picker */}
+          {onUpdateOption && (
+            <div style={{ padding: '8px' }}>
+              <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px', fontWeight: 500 }}>
+                Colors
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {COLOR_OPTIONS.map((color) => {
+                  const colorStyles = getColorStyles(color);
+                  const isSelected = editingOption.color === color;
+                  return (
+                    <div
+                      key={color}
+                      onClick={() => handleColorChange(color)}
+                      style={{
+                        padding: '4px 8px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        borderRadius: '4px',
+                        backgroundColor: isSelected ? '#f3f4f6' : 'transparent',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f3f4f6')}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: '14px',
+                          height: '14px',
+                          borderRadius: '3px',
+                          backgroundColor: colorStyles.bg,
+                          border: `1px solid ${colorStyles.text}20`,
+                        }}
+                      />
+                      <span style={{ fontSize: '13px', color: '#374151', textTransform: 'capitalize' }}>
+                        {color}
+                      </span>
+                      {isSelected && (
+                        <span style={{ marginLeft: 'auto', color: '#2563eb' }}>✓</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}

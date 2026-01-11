@@ -1,0 +1,40 @@
+{
+  "name": "@marlinjai/data-table-file-adapter-storage-brain",
+  "version": "0.1.0",
+  "description": "Storage Brain file adapter for @marlinjai/data-table",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@marlinjai/data-table-core": "*",
+    "@marlinjai/storage-brain-sdk": "*"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "@marlinjai/storage-brain-sdk": ">=0.1.0"
+  }
+}

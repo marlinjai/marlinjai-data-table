@@ -1,0 +1,21 @@
+{
+  "name": "@marlinjai/data-table-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Notion-like data table component - monorepo",
+  "workspaces": [
+    "packages/*",
+    "demo"
+  ],
+  "scripts": {
+    "build": "npm run build -w @marlinjai/data-table-core && npm run build -w @marlinjai/data-table-adapter-d1 && npm run build -w @marlinjai/data-table-adapter-memory && npm run build -w @marlinjai/data-table-react && npm run build -w @marlinjai/data-table-file-adapter-storage-brain",
+    "demo": "npm run dev -w data-table-demo",
+    "dev": "npm run dev --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

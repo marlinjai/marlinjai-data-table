@@ -1,0 +1,507 @@
+/**
+ * @marlinjai/data-table-react Base Styles
+ *
+ * This file contains the base styles for all data table components.
+ * All styles use CSS variables for easy customization.
+ */
+
+@import './variables.css';
+
+/* ==================== Table Container ==================== */
+
+.dt-table {
+  font-family: var(--dt-font-family);
+  font-size: var(--dt-font-size);
+  color: var(--dt-text-primary);
+  background-color: var(--dt-bg-primary);
+  border: 1px solid var(--dt-border-color);
+  border-radius: var(--dt-border-radius);
+  overflow: hidden;
+}
+
+.dt-table-scroll-container {
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.dt-table-scroll-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+}
+
+/* ==================== Header ==================== */
+
+.dt-header {
+  display: flex;
+  background-color: var(--dt-bg-secondary);
+  border-bottom: 1px solid var(--dt-border-color);
+  min-height: var(--dt-header-height);
+}
+
+.dt-header-cell {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--dt-cell-padding-x);
+  font-weight: var(--dt-font-weight-medium);
+  color: var(--dt-text-secondary);
+  border-right: 1px solid var(--dt-border-color);
+  user-select: none;
+  position: relative;
+}
+
+.dt-header-cell:last-child {
+  border-right: none;
+}
+
+.dt-header-cell:hover {
+  background-color: var(--dt-bg-hover);
+}
+
+.dt-header-cell-sortable {
+  cursor: pointer;
+}
+
+.dt-header-cell-resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  background-color: transparent;
+  transition: background-color var(--dt-transition-fast);
+}
+
+.dt-header-cell-resize-handle:hover,
+.dt-header-cell-resize-handle:active {
+  background-color: var(--dt-accent-primary);
+}
+
+/* ==================== Rows ==================== */
+
+.dt-row {
+  display: flex;
+  border-bottom: 1px solid var(--dt-border-color);
+  min-height: var(--dt-row-height);
+  transition: background-color var(--dt-transition-fast);
+}
+
+.dt-row:last-child {
+  border-bottom: none;
+}
+
+.dt-row:hover {
+  background-color: var(--dt-bg-hover);
+}
+
+.dt-row-selected {
+  background-color: var(--dt-bg-selected);
+}
+
+.dt-row-selected:hover {
+  background-color: var(--dt-bg-selected);
+}
+
+/* ==================== Cells ==================== */
+
+.dt-cell {
+  display: flex;
+  align-items: center;
+  padding: var(--dt-cell-padding-y) var(--dt-cell-padding-x);
+  border-right: 1px solid var(--dt-border-color);
+  overflow: hidden;
+}
+
+.dt-cell:last-child {
+  border-right: none;
+}
+
+/* Cell type-specific styles */
+.dt-cell-text {
+  /* Text cells */
+}
+
+.dt-cell-number {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.dt-cell-date {
+  /* Date cells */
+}
+
+.dt-cell-boolean {
+  justify-content: center;
+}
+
+.dt-cell-select,
+.dt-cell-multi-select {
+  /* Select cells use portals, no overflow restrictions */
+}
+
+.dt-cell-url {
+  color: var(--dt-accent-primary);
+}
+
+.dt-cell-url:hover {
+  text-decoration: underline;
+}
+
+/* Editable cell input */
+.dt-cell-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  outline: none;
+  padding: 0;
+}
+
+.dt-cell-input::placeholder {
+  color: var(--dt-text-placeholder);
+}
+
+/* ==================== Checkbox ==================== */
+
+.dt-checkbox {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--dt-border-color-strong);
+  border-radius: var(--dt-border-radius-sm);
+  cursor: pointer;
+  accent-color: var(--dt-accent-primary);
+}
+
+.dt-checkbox:checked {
+  background-color: var(--dt-accent-primary);
+  border-color: var(--dt-accent-primary);
+}
+
+/* ==================== Select Tags ==================== */
+
+.dt-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--dt-border-radius-sm);
+  font-size: var(--dt-font-size);
+  white-space: nowrap;
+}
+
+.dt-tag-gray { background-color: var(--dt-tag-gray-bg); color: var(--dt-tag-gray-text); }
+.dt-tag-red { background-color: var(--dt-tag-red-bg); color: var(--dt-tag-red-text); }
+.dt-tag-orange { background-color: var(--dt-tag-orange-bg); color: var(--dt-tag-orange-text); }
+.dt-tag-yellow { background-color: var(--dt-tag-yellow-bg); color: var(--dt-tag-yellow-text); }
+.dt-tag-green { background-color: var(--dt-tag-green-bg); color: var(--dt-tag-green-text); }
+.dt-tag-blue { background-color: var(--dt-tag-blue-bg); color: var(--dt-tag-blue-text); }
+.dt-tag-purple { background-color: var(--dt-tag-purple-bg); color: var(--dt-tag-purple-text); }
+.dt-tag-pink { background-color: var(--dt-tag-pink-bg); color: var(--dt-tag-pink-text); }
+.dt-tag-brown { background-color: var(--dt-tag-brown-bg); color: var(--dt-tag-brown-text); }
+
+.dt-tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 0 2px;
+  cursor: pointer;
+  opacity: 0.7;
+  font-size: var(--dt-font-size-sm);
+  line-height: 1;
+  color: inherit;
+  transition: opacity var(--dt-transition-fast);
+}
+
+.dt-tag-remove:hover {
+  opacity: 1;
+}
+
+/* ==================== Dropdowns ==================== */
+
+.dt-dropdown {
+  position: fixed;
+  z-index: var(--dt-z-dropdown);
+  min-width: 220px;
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: var(--dt-bg-primary);
+  border: 1px solid var(--dt-border-color);
+  border-radius: var(--dt-border-radius);
+  box-shadow: var(--dt-shadow-md);
+}
+
+.dt-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background-color var(--dt-transition-fast);
+}
+
+.dt-dropdown-item:hover {
+  background-color: var(--dt-bg-hover);
+}
+
+.dt-dropdown-item-selected {
+  background-color: var(--dt-bg-secondary);
+}
+
+.dt-dropdown-divider {
+  height: 1px;
+  background-color: var(--dt-border-color);
+  margin: 4px 0;
+}
+
+.dt-dropdown-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--dt-border-color);
+  border-radius: var(--dt-border-radius-sm);
+  font-size: var(--dt-font-size);
+  outline: none;
+  background-color: var(--dt-bg-primary);
+  color: var(--dt-text-primary);
+}
+
+.dt-dropdown-input:focus {
+  border-color: var(--dt-accent-primary);
+}
+
+.dt-dropdown-input::placeholder {
+  color: var(--dt-text-placeholder);
+}
+
+/* ==================== Popover (Edit Option) ==================== */
+
+.dt-popover {
+  position: fixed;
+  z-index: var(--dt-z-popover);
+  width: 200px;
+  background-color: var(--dt-bg-primary);
+  border: 1px solid var(--dt-border-color);
+  border-radius: var(--dt-border-radius);
+  box-shadow: var(--dt-shadow-md);
+}
+
+.dt-popover-section {
+  padding: 8px;
+  border-bottom: 1px solid var(--dt-border-color);
+}
+
+.dt-popover-section:last-child {
+  border-bottom: none;
+}
+
+.dt-popover-label {
+  font-size: var(--dt-font-size-xs);
+  font-weight: var(--dt-font-weight-medium);
+  color: var(--dt-text-secondary);
+  margin-bottom: 6px;
+}
+
+/* ==================== Color Picker ==================== */
+
+.dt-color-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: var(--dt-border-radius-sm);
+  transition: background-color var(--dt-transition-fast);
+}
+
+.dt-color-option:hover {
+  background-color: var(--dt-bg-hover);
+}
+
+.dt-color-option-selected {
+  background-color: var(--dt-bg-hover);
+}
+
+.dt-color-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+
+.dt-color-name {
+  font-size: var(--dt-font-size);
+  color: var(--dt-text-primary);
+  text-transform: capitalize;
+}
+
+.dt-color-checkmark {
+  margin-left: auto;
+  color: var(--dt-accent-primary);
+}
+
+/* ==================== Buttons ==================== */
+
+.dt-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: var(--dt-font-size);
+  font-weight: var(--dt-font-weight-medium);
+  border-radius: var(--dt-border-radius);
+  cursor: pointer;
+  transition: all var(--dt-transition-fast);
+  border: none;
+}
+
+.dt-button-primary {
+  background-color: var(--dt-accent-primary);
+  color: white;
+}
+
+.dt-button-primary:hover {
+  background-color: var(--dt-accent-primary-hover);
+}
+
+.dt-button-secondary {
+  background-color: var(--dt-bg-secondary);
+  color: var(--dt-text-primary);
+  border: 1px solid var(--dt-border-color);
+}
+
+.dt-button-secondary:hover {
+  background-color: var(--dt-bg-hover);
+}
+
+.dt-button-danger {
+  background-color: transparent;
+  color: var(--dt-accent-danger);
+}
+
+.dt-button-danger:hover {
+  background-color: #fef2f2;
+}
+
+.dt-button-ghost {
+  background-color: transparent;
+  color: var(--dt-text-secondary);
+}
+
+.dt-button-ghost:hover {
+  background-color: var(--dt-bg-hover);
+  color: var(--dt-text-primary);
+}
+
+/* ==================== Filter Bar ==================== */
+
+.dt-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--dt-border-color);
+  background-color: var(--dt-bg-secondary);
+  flex-wrap: wrap;
+}
+
+.dt-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background-color: var(--dt-bg-primary);
+  border: 1px solid var(--dt-border-color);
+  border-radius: var(--dt-border-radius-sm);
+  font-size: var(--dt-font-size-sm);
+}
+
+.dt-filter-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--dt-text-muted);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.dt-filter-chip-remove:hover {
+  color: var(--dt-accent-danger);
+}
+
+/* ==================== Add Row Button ==================== */
+
+.dt-add-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--dt-cell-padding-y) var(--dt-cell-padding-x);
+  color: var(--dt-text-muted);
+  cursor: pointer;
+  transition: all var(--dt-transition-fast);
+}
+
+.dt-add-row:hover {
+  background-color: var(--dt-bg-hover);
+  color: var(--dt-text-secondary);
+}
+
+/* ==================== Loading State ==================== */
+
+.dt-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: var(--dt-text-muted);
+}
+
+.dt-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--dt-border-color);
+  border-top-color: var(--dt-accent-primary);
+  border-radius: 50%;
+  animation: dt-spin 0.6s linear infinite;
+}
+
+@keyframes dt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==================== Empty State ==================== */
+
+.dt-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--dt-text-muted);
+  text-align: center;
+}
+
+.dt-empty-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.dt-empty-title {
+  font-size: var(--dt-font-size);
+  font-weight: var(--dt-font-weight-medium);
+  color: var(--dt-text-secondary);
+  margin-bottom: 4px;
+}
+
+.dt-empty-description {
+  font-size: var(--dt-font-size-sm);
+}

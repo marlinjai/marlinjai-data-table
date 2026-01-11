@@ -1,0 +1,195 @@
+/**
+ * @marlinjai/data-table-react CSS Variables
+ *
+ * Override these variables to customize the appearance of the data table.
+ * All variables use the `--dt-` prefix to avoid conflicts.
+ *
+ * Example usage:
+ * ```css
+ * :root {
+ *   --dt-accent-primary: #8b5cf6;
+ * }
+ * ```
+ */
+
+:root {
+  /* ==================== Colors ==================== */
+
+  /* Backgrounds */
+  --dt-bg-primary: #ffffff;
+  --dt-bg-secondary: #f9fafb;
+  --dt-bg-tertiary: #f3f4f6;
+  --dt-bg-hover: #f3f4f6;
+  --dt-bg-selected: #eff6ff;
+
+  /* Borders */
+  --dt-border-color: #e5e7eb;
+  --dt-border-color-strong: #d1d5db;
+
+  /* Text */
+  --dt-text-primary: #111827;
+  --dt-text-secondary: #6b7280;
+  --dt-text-muted: #9ca3af;
+  --dt-text-placeholder: #9ca3af;
+
+  /* Accents */
+  --dt-accent-primary: #2563eb;
+  --dt-accent-primary-hover: #1d4ed8;
+  --dt-accent-danger: #ef4444;
+  --dt-accent-danger-hover: #dc2626;
+  --dt-accent-success: #16a34a;
+  --dt-accent-warning: #f59e0b;
+
+  /* ==================== Sizing ==================== */
+
+  --dt-cell-padding-x: 12px;
+  --dt-cell-padding-y: 8px;
+  --dt-header-height: 36px;
+  --dt-row-height: 32px;
+  --dt-border-radius: 6px;
+  --dt-border-radius-sm: 4px;
+
+  /* ==================== Typography ==================== */
+
+  --dt-font-family: inherit;
+  --dt-font-size: 13px;
+  --dt-font-size-sm: 12px;
+  --dt-font-size-xs: 11px;
+  --dt-font-weight-normal: 400;
+  --dt-font-weight-medium: 500;
+  --dt-font-weight-semibold: 600;
+
+  /* ==================== Shadows ==================== */
+
+  --dt-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --dt-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --dt-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+  /* ==================== Z-Index ==================== */
+
+  --dt-z-dropdown: 9999;
+  --dt-z-popover: 10000;
+  --dt-z-modal: 10001;
+
+  /* ==================== Transitions ==================== */
+
+  --dt-transition-fast: 100ms ease;
+  --dt-transition-normal: 150ms ease;
+  --dt-transition-slow: 200ms ease;
+
+  /* ==================== Select Tag Colors ==================== */
+
+  --dt-tag-gray-bg: #e5e7eb;
+  --dt-tag-gray-text: #374151;
+  --dt-tag-red-bg: #fee2e2;
+  --dt-tag-red-text: #991b1b;
+  --dt-tag-orange-bg: #ffedd5;
+  --dt-tag-orange-text: #9a3412;
+  --dt-tag-yellow-bg: #fef3c7;
+  --dt-tag-yellow-text: #92400e;
+  --dt-tag-green-bg: #dcfce7;
+  --dt-tag-green-text: #166534;
+  --dt-tag-blue-bg: #dbeafe;
+  --dt-tag-blue-text: #1e40af;
+  --dt-tag-purple-bg: #f3e8ff;
+  --dt-tag-purple-text: #6b21a8;
+  --dt-tag-pink-bg: #fce7f3;
+  --dt-tag-pink-text: #9d174d;
+  --dt-tag-brown-bg: #fae5d3;
+  --dt-tag-brown-text: #7c4a03;
+}
+
+/* ==================== Dark Mode (Auto) ==================== */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Backgrounds */
+    --dt-bg-primary: #1f2937;
+    --dt-bg-secondary: #111827;
+    --dt-bg-tertiary: #374151;
+    --dt-bg-hover: #374151;
+    --dt-bg-selected: #1e3a5f;
+
+    /* Borders */
+    --dt-border-color: #374151;
+    --dt-border-color-strong: #4b5563;
+
+    /* Text */
+    --dt-text-primary: #f9fafb;
+    --dt-text-secondary: #d1d5db;
+    --dt-text-muted: #9ca3af;
+    --dt-text-placeholder: #6b7280;
+
+    /* Shadows for dark mode */
+    --dt-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --dt-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    --dt-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+
+    /* Dark mode tag colors (slightly muted) */
+    --dt-tag-gray-bg: #4b5563;
+    --dt-tag-gray-text: #e5e7eb;
+    --dt-tag-red-bg: #7f1d1d;
+    --dt-tag-red-text: #fecaca;
+    --dt-tag-orange-bg: #7c2d12;
+    --dt-tag-orange-text: #fed7aa;
+    --dt-tag-yellow-bg: #78350f;
+    --dt-tag-yellow-text: #fef08a;
+    --dt-tag-green-bg: #14532d;
+    --dt-tag-green-text: #bbf7d0;
+    --dt-tag-blue-bg: #1e3a8a;
+    --dt-tag-blue-text: #bfdbfe;
+    --dt-tag-purple-bg: #581c87;
+    --dt-tag-purple-text: #e9d5ff;
+    --dt-tag-pink-bg: #831843;
+    --dt-tag-pink-text: #fbcfe8;
+    --dt-tag-brown-bg: #78350f;
+    --dt-tag-brown-text: #fef3c7;
+  }
+}
+
+/* ==================== Dark Mode (Manual via class) ==================== */
+
+.dark,
+[data-theme="dark"] {
+  /* Backgrounds */
+  --dt-bg-primary: #1f2937;
+  --dt-bg-secondary: #111827;
+  --dt-bg-tertiary: #374151;
+  --dt-bg-hover: #374151;
+  --dt-bg-selected: #1e3a5f;
+
+  /* Borders */
+  --dt-border-color: #374151;
+  --dt-border-color-strong: #4b5563;
+
+  /* Text */
+  --dt-text-primary: #f9fafb;
+  --dt-text-secondary: #d1d5db;
+  --dt-text-muted: #9ca3af;
+  --dt-text-placeholder: #6b7280;
+
+  /* Shadows for dark mode */
+  --dt-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --dt-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --dt-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+
+  /* Dark mode tag colors */
+  --dt-tag-gray-bg: #4b5563;
+  --dt-tag-gray-text: #e5e7eb;
+  --dt-tag-red-bg: #7f1d1d;
+  --dt-tag-red-text: #fecaca;
+  --dt-tag-orange-bg: #7c2d12;
+  --dt-tag-orange-text: #fed7aa;
+  --dt-tag-yellow-bg: #78350f;
+  --dt-tag-yellow-text: #fef08a;
+  --dt-tag-green-bg: #14532d;
+  --dt-tag-green-text: #bbf7d0;
+  --dt-tag-blue-bg: #1e3a8a;
+  --dt-tag-blue-text: #bfdbfe;
+  --dt-tag-purple-bg: #581c87;
+  --dt-tag-purple-text: #e9d5ff;
+  --dt-tag-pink-bg: #831843;
+  --dt-tag-pink-text: #fbcfe8;
+  --dt-tag-brown-bg: #78350f;
+  --dt-tag-brown-text: #fef3c7;
+}
