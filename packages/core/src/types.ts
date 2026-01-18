@@ -414,6 +414,7 @@ export interface ListViewConfig {
 
 export type FooterCalculationType =
   | 'none'
+  // Counting (available for all column types)
   | 'count'
   | 'count_values'
   | 'count_unique'
@@ -421,15 +422,22 @@ export type FooterCalculationType =
   | 'count_not_empty'
   | 'percent_empty'
   | 'percent_not_empty'
+  // Numeric (only for number columns)
   | 'sum'
   | 'average'
   | 'median'
   | 'min'
   | 'max'
   | 'range'
+  // Date (only for date, created_time, last_edited_time columns)
   | 'earliest_date'
   | 'latest_date'
-  | 'date_range';
+  | 'date_range'
+  // Boolean (only for boolean/checkbox columns)
+  | 'checked'
+  | 'unchecked'
+  | 'percent_checked'
+  | 'percent_unchecked';
 
 export interface FooterConfig {
   calculations: Record<string, FooterCalculationType>; // columnId -> calculation type
