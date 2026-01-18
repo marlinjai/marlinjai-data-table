@@ -271,11 +271,22 @@ export class MemoryAdapter extends BaseDatabaseAdapter {
     const id = this.generateId();
     const now = new Date();
 
+    // Auto-populate timestamp columns
+    const cells: Record<string, CellValue> = input.cells ? { ...input.cells } : {};
+    const tableColumns = Array.from(this.columns.values()).filter(
+      (c) => c.tableId === input.tableId
+    );
+    for (const col of tableColumns) {
+      if (col.type === 'created_time' || col.type === 'last_edited_time') {
+        cells[col.id] = now;
+      }
+    }
+
     const row: Row = {
       id,
       tableId: input.tableId,
       parentRowId: input.parentRowId,
-      cells: input.cells ?? {},
+      cells,
       computed: {},
       archived: false,
       createdAt: now,
@@ -390,10 +401,23 @@ export class MemoryAdapter extends BaseDatabaseAdapter {
     const row = this.rows.get(rowId);
     if (!row) throw new Error('Row not found');
 
+    const now = new Date();
+
+    // Auto-update last_edited_time columns
+    const updatedCells = { ...row.cells, ...cells };
+    const tableColumns = Array.from(this.columns.values()).filter(
+      (c) => c.tableId === row.tableId
+    );
+    for (const col of tableColumns) {
+      if (col.type === 'last_edited_time') {
+        updatedCells[col.id] = now;
+      }
+    }
+
     const updated: Row = {
       ...row,
-      cells: { ...row.cells, ...cells },
-      updatedAt: new Date(),
+      cells: updatedCells,
+      updatedAt: now,
     };
 
     this.rows.set(rowId, updated);
@@ -907,6 +931,25 @@ export class MemoryAdapter extends BaseDatabaseAdapter {
       config: {
         formula: 'prop("Amount") * 1.08',
         resultType: 'number',
+      },
+    });
+
+    // Auto-timestamp columns
+    const createdTimeCol = await this.createColumn({
+      tableId: receiptsTable.id,
+      name: 'Created',
+      type: 'created_time',
+      config: {
+        includeTime: true,
+      },
+    });
+
+    const lastEditedTimeCol = await this.createColumn({
+      tableId: receiptsTable.id,
+      name: 'Last Edited',
+      type: 'last_edited_time',
+      config: {
+        includeTime: true,
       },
     });
 

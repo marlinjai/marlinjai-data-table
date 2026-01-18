@@ -18,7 +18,9 @@ export type ColumnType =
   | 'file'
   | 'formula'
   | 'relation'
-  | 'rollup';
+  | 'rollup'
+  | 'created_time'
+  | 'last_edited_time';
 
 // =============================================================================
 // Column Configuration Types
@@ -79,6 +81,18 @@ export interface RollupColumnConfig {
   aggregation: RollupAggregation;
 }
 
+export interface CreatedTimeColumnConfig {
+  dateFormat?: string; // e.g., 'YYYY-MM-DD HH:mm'
+  includeTime?: boolean;
+  timezone?: string;
+}
+
+export interface LastEditedTimeColumnConfig {
+  dateFormat?: string; // e.g., 'YYYY-MM-DD HH:mm'
+  includeTime?: boolean;
+  timezone?: string;
+}
+
 export type RollupAggregation =
   | 'count'
   | 'sum'
@@ -104,7 +118,9 @@ export type ColumnConfig =
   | FileColumnConfig
   | FormulaColumnConfig
   | RelationColumnConfig
-  | RollupColumnConfig;
+  | RollupColumnConfig
+  | CreatedTimeColumnConfig
+  | LastEditedTimeColumnConfig;
 
 // =============================================================================
 // Core Entities

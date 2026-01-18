@@ -87,6 +87,8 @@ const COLUMN_TYPES: { value: ColumnType; label: string; icon: string }[] = [
   { value: 'formula', label: 'Formula', icon: 'ƒ' },
   { value: 'relation', label: 'Relation', icon: '↔' },
   { value: 'rollup', label: 'Rollup', icon: '∑' },
+  { value: 'created_time', label: 'Created time', icon: '🕐' },
+  { value: 'last_edited_time', label: 'Last edited time', icon: '✏️' },
 ];
 
 export function TableView({

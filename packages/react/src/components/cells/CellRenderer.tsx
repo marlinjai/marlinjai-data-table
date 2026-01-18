@@ -8,6 +8,7 @@ import { MultiSelectCell } from './MultiSelectCell';
 import { UrlCell } from './UrlCell';
 import { FileCell } from './FileCell';
 import { RelationCell } from './RelationCell';
+import { TimestampCell } from './TimestampCell';
 
 export interface CellRendererProps {
   column: Column;
@@ -169,6 +170,15 @@ export function CellRenderer({
           readOnly={readOnly}
           onUpload={onUploadFile}
           onDelete={onDeleteFile}
+        />
+      );
+
+    case 'created_time':
+    case 'last_edited_time':
+      return (
+        <TimestampCell
+          column={column}
+          value={value as Date | string | null}
         />
       );
 

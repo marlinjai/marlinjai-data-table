@@ -8,3 +8,4 @@ export { MultiSelectCell, type MultiSelectCellProps } from './MultiSelectCell';
 export { UrlCell, type UrlCellProps } from './UrlCell';
 export { FileCell, type FileCellProps } from './FileCell';
 export { RelationCell, type RelationCellProps } from './RelationCell';
+export { TimestampCell, type TimestampCellProps } from './TimestampCell';
