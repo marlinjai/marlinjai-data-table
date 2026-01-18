@@ -5,6 +5,7 @@ import {
   DataTableProvider,
   TableView,
   FilterBar,
+  SearchBar,
   useTable,
   useViews,
   ViewSwitcher,
@@ -147,6 +148,11 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
   });
   const [columnOrder, setColumnOrder] = useState<string[] | undefined>(undefined);
   const [footerConfig, setFooterConfig] = useState<FooterConfig>({ calculations: {} });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredRows, setFilteredRows] = useState<Row[]>([]);
+
+  // Use filtered rows when searching, otherwise use all rows
+  const displayRows = searchTerm ? filteredRows : rows;
 
   // Find the Status column ID for BoardView grouping
   const statusColumnId = columns.find((col) => col.name === 'Status')?.id;
@@ -338,14 +344,28 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
         onRenameView={(viewId, name) => updateView(viewId, { name })}
       />
 
-      {/* Filter bar (only for table view) */}
+      {/* Search and Filter bar (only for table view) */}
       {(!currentView || currentView.type === 'table') && (
-        <FilterBar
-          columns={columns}
-          filters={filters}
-          selectOptions={selectOptions}
-          onFiltersChange={setFilters}
-        />
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <SearchBar
+            rows={rows}
+            columns={columns}
+            onSearchResults={(results, term) => {
+              setFilteredRows(results);
+              setSearchTerm(term);
+            }}
+            placeholder="Search table..."
+            style={{ minWidth: '250px', flex: '0 0 auto' }}
+          />
+          <div style={{ flex: 1 }}>
+            <FilterBar
+              columns={columns}
+              filters={filters}
+              selectOptions={selectOptions}
+              onFiltersChange={setFilters}
+            />
+          </div>
+        </div>
       )}
 
       {/* Grouping Controls */}
@@ -393,7 +413,7 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
       {(!currentView || currentView.type === 'table') && (
         <TableView
           columns={columns}
-          rows={rows}
+          rows={displayRows}
           selectOptions={selectOptions}
           onCellChange={(rowId, columnId, value) => updateCell(rowId, columnId, value)}
           onAddRow={() => addRow()}
@@ -471,6 +491,7 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
       >
         <strong>Try it out:</strong>
         <ul style={{ marginTop: '8px', marginLeft: '20px' }}>
+          <li><b>Search</b> - Use the search bar (Cmd/Ctrl+F) to find rows instantly</li>
           <li><b>Edit cells</b> - Double-click any cell to edit inline</li>
           <li><b>Sort</b> - Click column headers to sort (click again to toggle)</li>
           <li><b>Filter</b> - Use the filter bar above the table</li>
