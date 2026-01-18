@@ -357,6 +357,7 @@ export interface ViewConfig {
   subItemsConfig?: SubItemsConfig; // Sub-items display options
   hiddenColumns?: string[]; // Column IDs to hide in this view
   columnOrder?: string[]; // Custom column order for this view
+  footerConfig?: FooterConfig; // Footer calculations config
   // Type-specific config
   boardConfig?: BoardViewConfig;
   calendarConfig?: CalendarViewConfig;
@@ -405,6 +406,33 @@ export interface TimelineViewConfig {
 export interface ListViewConfig {
   showCheckboxes?: boolean;
   indentColumnId?: string; // for nested lists
+}
+
+// =============================================================================
+// Footer Calculation Types
+// =============================================================================
+
+export type FooterCalculationType =
+  | 'none'
+  | 'count'
+  | 'count_values'
+  | 'count_unique'
+  | 'count_empty'
+  | 'count_not_empty'
+  | 'percent_empty'
+  | 'percent_not_empty'
+  | 'sum'
+  | 'average'
+  | 'median'
+  | 'min'
+  | 'max'
+  | 'range'
+  | 'earliest_date'
+  | 'latest_date'
+  | 'date_range';
+
+export interface FooterConfig {
+  calculations: Record<string, FooterCalculationType>; // columnId -> calculation type
 }
 
 // =============================================================================

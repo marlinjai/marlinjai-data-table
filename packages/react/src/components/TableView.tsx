@@ -1,7 +1,8 @@
 import React, { useCallback, useState, useRef, useEffect, useMemo } from 'react';
-import type { Column, Row, CellValue, SelectOption, QuerySort, ColumnType, FileReference, SubItemsConfig, GroupConfig } from '@marlinjai/data-table-core';
+import type { Column, Row, CellValue, SelectOption, QuerySort, ColumnType, FileReference, SubItemsConfig, GroupConfig, FooterConfig } from '@marlinjai/data-table-core';
 import { CellRenderer } from './cells/CellRenderer';
 import { GroupHeader } from './GroupHeader';
+import { TableFooter } from './TableFooter';
 import { useGrouping } from '../hooks/useGrouping';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
 
@@ -70,6 +71,11 @@ export interface TableViewProps {
   onGroupConfigChange?: (config: GroupConfig | undefined) => void;
   onToggleGroupCollapse?: (groupValue: string) => void;
 
+  // Footer calculations
+  footerConfig?: FooterConfig;
+  onFooterConfigChange?: (config: FooterConfig) => void;
+  showFooter?: boolean;
+
   // Styling
   className?: string;
   style?: React.CSSProperties;
@@ -124,6 +130,9 @@ export function TableView({
   groupConfig,
   onGroupConfigChange,
   onToggleGroupCollapse,
+  footerConfig,
+  onFooterConfigChange,
+  showFooter = true,
   className,
   style,
 }: TableViewProps) {
@@ -1014,6 +1023,19 @@ export function TableView({
               </tr>
             )}
           </tbody>
+          {/* Footer calculations */}
+          {showFooter && !isGrouped && (
+            <TableFooter
+              columns={orderedColumns}
+              rows={rows}
+              footerConfig={footerConfig}
+              onFooterConfigChange={onFooterConfigChange}
+              columnWidths={columnWidths}
+              showSelectionColumn={!!onSelectionChange}
+              showDeleteColumn={!!onDeleteRow}
+              showAddPropertyColumn={!!onAddProperty}
+            />
+          )}
         </table>
       </div>
 

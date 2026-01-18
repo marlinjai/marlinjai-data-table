@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MemoryAdapter } from '@marlinjai/data-table-adapter-memory';
-import type { FileStorageAdapter, UploadedFile, FileUploadOptions, Row, GroupConfig, SubItemsConfig } from '@marlinjai/data-table-core';
+import type { FileStorageAdapter, UploadedFile, FileUploadOptions, Row, GroupConfig, SubItemsConfig, FooterConfig } from '@marlinjai/data-table-core';
 import {
   DataTableProvider,
   TableView,
@@ -146,6 +146,7 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
     collapsedParents: [],
   });
   const [columnOrder, setColumnOrder] = useState<string[] | undefined>(undefined);
+  const [footerConfig, setFooterConfig] = useState<FooterConfig>({ calculations: {} });
 
   // Find the Status column ID for BoardView grouping
   const statusColumnId = columns.find((col) => col.name === 'Status')?.id;
@@ -422,6 +423,10 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
           onCreateSubItem={handleCreateSubItem}
           columnOrder={columnOrder}
           onColumnReorder={handleColumnReorder}
+          // Footer calculations
+          footerConfig={footerConfig}
+          onFooterConfigChange={setFooterConfig}
+          showFooter={true}
           style={{ backgroundColor: 'white' }}
         />
       )}
@@ -477,6 +482,8 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
           <li><b>Select rows</b> - Use checkboxes, then bulk delete</li>
           <li><b>Add rows</b> - Click "+ New row" at the bottom</li>
           <li><b>Upload files</b> - Click the "Receipt" file column to upload files (drag & drop supported)</li>
+          <li><b>Footer calculations</b> - Click "Calculate" in the footer row to add sum, average, count, etc.</li>
+          <li><b>Timestamps</b> - "Created" and "Last Edited" columns auto-update when rows change</li>
         </ul>
       </div>
     </div>
