@@ -7,6 +7,8 @@ Welcome to the `@marlinjai/data-table` documentation.
 - [Architecture](./architecture.md) - System design, patterns, package structure
 - [Theming](./theming.md) - CSS customization and dark mode
 - [API Reference](./api.md) - Hooks and component API
+- [Sub-items](./sub-items.md) - Hierarchical rows with parent-child relationships
+- [Grouping](./grouping.md) - Group rows by select/multi-select columns
 
 ## Quick Links
 
@@ -63,7 +65,7 @@ function MyTable() {
 The data table is **storage-agnostic**. You provide an adapter that implements the `DatabaseAdapter` interface:
 
 - `MemoryAdapter` - In-memory storage (for testing/demos)
-- `D1Adapter` - Cloudflare D1 (planned)
+- `D1Adapter` - Cloudflare D1
 - `SupabaseAdapter` - Supabase (planned)
 
 ### Column Types

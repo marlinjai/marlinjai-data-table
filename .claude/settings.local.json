@@ -15,7 +15,10 @@
       "Bash(git push:*)",
       "Bash(npm whoami:*)",
       "Bash(npm view:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm publish)",
+      "Bash(npm config set:*)",
+      "Bash(npm run typecheck:*)"
     ]
   }
 }

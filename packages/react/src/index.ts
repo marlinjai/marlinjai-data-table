@@ -42,4 +42,6 @@ export type {
   CreateRowInput,
   UpdateTableInput,
   UpdateColumnInput,
+  SubItemsConfig,
+  GroupConfig,
 } from '@marlinjai/data-table-core';

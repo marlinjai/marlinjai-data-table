@@ -12,6 +12,48 @@ A **reusable, storage-agnostic Notion-like data table** React component library.
 - **Rollups** - Aggregate data from related tables with 14 aggregation types
 - **Relations** - Link rows across tables with an intuitive picker UI
 - **Multiple Views** - Table, Board (Kanban), and Calendar views
+- **Sub-items** - Hierarchical rows with parent-child relationships
+- **Grouping** - Group rows by select/multi-select columns
+
+## Feature Status
+
+### Column Types
+- [x] Text
+- [x] Number (with currency, percent formatting)
+- [x] Date
+- [x] Boolean (checkbox)
+- [x] Select (single option)
+- [x] Multi-select (multiple options)
+- [x] URL
+- [x] File (upload with MIME restrictions)
+- [x] Formula (50+ functions)
+- [x] Relation (cross-table links)
+- [x] Rollup (14 aggregation types)
+- [ ] Status (workflow stages)
+- [ ] Person (user assignment)
+- [ ] Created time / Last edited time
+
+### Views
+- [x] Table view
+- [x] Board view (Kanban)
+- [x] Calendar view
+- [ ] Gallery view
+- [ ] Timeline view
+- [ ] List view
+
+### Features
+- [x] Inline cell editing
+- [x] Column resize & reorder
+- [x] Sorting
+- [x] Filtering
+- [x] Grouping
+- [x] Sub-items (hierarchical rows)
+- [x] Row selection
+- [x] Dark mode
+- [ ] Footer calculations
+- [ ] Search
+- [ ] Undo/redo
+- [ ] Export/Import
 
 ## Installation
 
@@ -63,6 +105,7 @@ function MyTable() {
 | `select` | Single select dropdown |
 | `multi_select` | Multiple select tags |
 | `url` | URL link |
+| `file` | File upload with MIME type restrictions |
 | `relation` | Link to rows in another table |
 | `rollup` | Aggregate values from related rows |
 | `formula` | Computed values using formulas |

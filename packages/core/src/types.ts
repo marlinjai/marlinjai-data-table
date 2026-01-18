@@ -143,6 +143,7 @@ export interface SelectOption {
 export interface Row {
   id: string;
   tableId: string;
+  parentRowId?: string; // For sub-items/hierarchical rows
   cells: Record<string, CellValue>;
   computed?: Record<string, CellValue>; // Cached formula/rollup values
   archived: boolean;
@@ -201,6 +202,9 @@ export interface QueryOptions {
   offset?: number;
   cursor?: string;
   includeArchived?: boolean;
+  // Sub-items filtering
+  parentRowId?: string | null; // null = top-level only, undefined = all, string = children of parent
+  includeSubItems?: boolean; // Include all sub-items recursively
 }
 
 export interface QueryFilter {
@@ -260,6 +264,7 @@ export interface CreateColumnInput {
 
 export interface CreateRowInput {
   tableId: string;
+  parentRowId?: string; // For creating sub-items
   cells?: Record<string, CellValue>;
 }
 
@@ -331,13 +336,31 @@ export interface View {
 export interface ViewConfig {
   filters?: QueryFilter[];
   sorts?: QuerySort[];
-  groupBy?: string; // columnId for grouping
+  groupBy?: string; // columnId for grouping (simple)
+  groupConfig?: GroupConfig; // Advanced grouping config
+  subItemsConfig?: SubItemsConfig; // Sub-items display options
+  hiddenColumns?: string[]; // Column IDs to hide in this view
+  columnOrder?: string[]; // Custom column order for this view
   // Type-specific config
   boardConfig?: BoardViewConfig;
   calendarConfig?: CalendarViewConfig;
   galleryConfig?: GalleryViewConfig;
   timelineConfig?: TimelineViewConfig;
   listConfig?: ListViewConfig;
+}
+
+export interface GroupConfig {
+  columnId: string; // Column to group by
+  direction?: 'asc' | 'desc'; // Group sort direction
+  hideEmptyGroups?: boolean;
+  collapsedGroups?: string[]; // Group values that are collapsed
+}
+
+export interface SubItemsConfig {
+  enabled: boolean;
+  displayMode?: 'nested' | 'flat'; // nested shows hierarchy, flat shows all
+  filterMode?: 'all' | 'parents' | 'subitems'; // What to show
+  collapsedParents?: string[]; // Parent row IDs that are collapsed
 }
 
 export interface BoardViewConfig {

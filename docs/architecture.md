@@ -35,7 +35,7 @@ This document describes the architecture of the `@marlinjai/data-table` package.
 │   │   └── package.json
 │   │
 │   ├── adapter-memory/          # In-memory adapter
-│   └── adapter-d1/              # Cloudflare D1 adapter (planned)
+│   └── adapter-d1/              # Cloudflare D1 adapter
 │
 └── demo/                        # Demo application
 ```
@@ -519,3 +519,126 @@ interface CalendarViewConfig {
 - Event click handlers
 - Day click handlers (for adding new events)
 - Event count footer
+
+## Sub-items (Hierarchical Rows)
+
+The data table supports hierarchical row structures where rows can have parent-child relationships, similar to Notion's sub-items feature.
+
+### Data Model
+
+```typescript
+interface Row {
+  id: string;
+  tableId: string;
+  parentRowId?: string; // For sub-items/hierarchical rows
+  cells: Record<string, CellValue>;
+  // ...
+}
+```
+
+### Configuration
+
+```typescript
+interface SubItemsConfig {
+  enabled: boolean;
+  displayMode?: 'nested' | 'flat'; // nested shows hierarchy, flat shows all
+  filterMode?: 'all' | 'parents' | 'subitems'; // What to show
+  collapsedParents?: string[]; // Parent row IDs that are collapsed
+}
+```
+
+### Query Options
+
+```typescript
+interface RowQueryOptions {
+  // ...
+  parentRowId?: string | null; // null = top-level only, undefined = all, string = children of parent
+  includeSubItems?: boolean; // Include all sub-items recursively
+}
+```
+
+### Creating Sub-items
+
+```typescript
+interface CreateRowInput {
+  tableId: string;
+  parentRowId?: string; // For creating sub-items
+  cells?: Record<string, CellValue>;
+}
+```
+
+### Display Modes
+
+| Mode | Description |
+|------|-------------|
+| `nested` | Shows hierarchy with indentation, parent rows have expand/collapse |
+| `flat` | Shows all rows at the same level, ignores hierarchy |
+
+### Filter Modes
+
+| Mode | Description |
+|------|-------------|
+| `all` | Show all rows (parents and sub-items) |
+| `parents` | Show only top-level rows (no sub-items) |
+| `subitems` | Show only sub-items (no top-level rows) |
+
+## Grouping System
+
+The grouping system allows rows to be organized into collapsible groups based on select or multi-select column values.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        TableView                                 │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ GroupHeader (Group A)                              [▼] 5  │  │
+│  │  ├── Row 1                                                │  │
+│  │  ├── Row 2                                                │  │
+│  │  └── Row 3                                                │  │
+│  ├───────────────────────────────────────────────────────────┤  │
+│  │ GroupHeader (Group B)                              [▶] 3  │  │
+│  │  (collapsed - rows hidden)                                │  │
+│  └───────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### GroupHeader Component
+
+Located at `packages/react/src/components/GroupHeader.tsx`:
+
+```typescript
+interface GroupHeaderProps {
+  label: string;           // Group name (option label)
+  rowCount: number;        // Number of rows in group
+  isCollapsed: boolean;    // Collapse state
+  onToggleCollapse: () => void;
+  colSpan: number;         // Table columns to span
+  className?: string;
+}
+```
+
+### Features
+
+- **Collapsible groups**: Click header to expand/collapse
+- **Row count badge**: Shows number of rows in each group
+- **Visual feedback**: Chevron rotates to indicate state
+- **"No Status" group**: Rows without a group value appear in a special group
+
+### Grouping Configuration
+
+Grouping is configured through the view config:
+
+```typescript
+interface ViewConfig {
+  // ...
+  groupByColumnId?: string; // Must be select or multi_select column
+}
+```
+
+### Usage
+
+1. Add a `select` or `multi_select` column to your table
+2. Configure the view with `groupByColumnId` pointing to that column
+3. Rows are automatically grouped by their value in that column
+4. Rows with no value appear in the "No Status" group

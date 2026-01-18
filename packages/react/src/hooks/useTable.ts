@@ -53,7 +53,7 @@ export interface UseTableResult {
   hasMore: boolean;
   isRowsLoading: boolean;
   rowsError: Error | null;
-  addRow: (cells?: Record<string, CellValue>) => Promise<Row>;
+  addRow: (options?: { cells?: Record<string, CellValue>; parentRowId?: string }) => Promise<Row>;
   updateRow: (rowId: string, cells: Record<string, CellValue>) => Promise<Row>;
   deleteRow: (rowId: string) => Promise<void>;
   archiveRow: (rowId: string) => Promise<void>;

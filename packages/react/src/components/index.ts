@@ -1,4 +1,6 @@
 export { TableView, type TableViewProps } from './TableView';
+export { SubItemRow, type SubItemRowProps } from './SubItemRow';
+export { GroupHeader, type GroupHeaderProps } from './GroupHeader';
 export * from './cells';
 export * from './filters';
 export * from './relations';

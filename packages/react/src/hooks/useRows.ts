@@ -35,7 +35,7 @@ export interface UseRowsResult {
   clearFilters: () => void;
 
   // Row operations
-  addRow: (cells?: Record<string, CellValue>) => Promise<Row>;
+  addRow: (options?: { cells?: Record<string, CellValue>; parentRowId?: string }) => Promise<Row>;
   updateRow: (rowId: string, cells: Record<string, CellValue>) => Promise<Row>;
   deleteRow: (rowId: string) => Promise<void>;
   archiveRow: (rowId: string) => Promise<void>;
@@ -141,10 +141,27 @@ export function useRows({
   }, []);
 
   const addRow = useCallback(
-    async (cells?: Record<string, CellValue>) => {
-      const input: CreateRowInput = { tableId, cells };
+    async (options?: { cells?: Record<string, CellValue>; parentRowId?: string }) => {
+      const input: CreateRowInput = {
+        tableId,
+        cells: options?.cells,
+        parentRowId: options?.parentRowId,
+      };
       const row = await dbAdapter.createRow(input);
-      setRows((prev) => [row, ...prev]);
+      // If it's a sub-item, add it after its parent in the list
+      if (options?.parentRowId) {
+        setRows((prev) => {
+          const parentIndex = prev.findIndex((r) => r.id === options.parentRowId);
+          if (parentIndex >= 0) {
+            const newRows = [...prev];
+            newRows.splice(parentIndex + 1, 0, row);
+            return newRows;
+          }
+          return [row, ...prev];
+        });
+      } else {
+        setRows((prev) => [row, ...prev]);
+      }
       setTotal((prev) => prev + 1);
       return row;
     },

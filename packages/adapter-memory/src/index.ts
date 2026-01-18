@@ -274,6 +274,7 @@ export class MemoryAdapter extends BaseDatabaseAdapter {
     const row: Row = {
       id,
       tableId: input.tableId,
+      parentRowId: input.parentRowId,
       cells: input.cells ?? {},
       computed: {},
       archived: false,
@@ -295,6 +296,27 @@ export class MemoryAdapter extends BaseDatabaseAdapter {
     // Filter archived
     if (!query?.includeArchived) {
       rows = rows.filter((r) => !r.archived);
+    }
+
+    // Filter by parentRowId (sub-items filtering)
+    if (query?.parentRowId !== undefined) {
+      if (query.parentRowId === null) {
+        // null = top-level only (no parent)
+        rows = rows.filter((r) => !r.parentRowId);
+      } else {
+        // string = children of specific parent
+        rows = rows.filter((r) => r.parentRowId === query.parentRowId);
+      }
+    }
+
+    // If includeSubItems is true and we're fetching top-level, include all descendants recursively
+    // (This is handled in getAllDescendants helper, but here we just return all rows without parent filtering)
+    if (query?.includeSubItems && query?.parentRowId === null) {
+      // Reset to all rows (no parent filtering)
+      rows = Array.from(this.rows.values()).filter((r) => r.tableId === tableId);
+      if (!query?.includeArchived) {
+        rows = rows.filter((r) => !r.archived);
+      }
     }
 
     // Apply filters
@@ -418,6 +440,56 @@ export class MemoryAdapter extends BaseDatabaseAdapter {
 
   async bulkArchiveRows(rowIds: string[]): Promise<void> {
     await Promise.all(rowIds.map((id) => this.archiveRow(id)));
+  }
+
+  // =========================================================================
+  // Sub-items Helpers
+  // =========================================================================
+
+  /**
+   * Get all descendant rows of a parent row recursively
+   */
+  async getDescendants(rowId: string): Promise<Row[]> {
+    const descendants: Row[] = [];
+    const directChildren = Array.from(this.rows.values()).filter(
+      (r) => r.parentRowId === rowId && !r.archived
+    );
+
+    for (const child of directChildren) {
+      descendants.push(child);
+      const childDescendants = await this.getDescendants(child.id);
+      descendants.push(...childDescendants);
+    }
+
+    return descendants;
+  }
+
+  /**
+   * Get the depth (nesting level) of a row in the hierarchy
+   * Returns 0 for top-level rows, 1 for children, 2 for grandchildren, etc.
+   */
+  getRowDepth(rowId: string): number {
+    const row = this.rows.get(rowId);
+    if (!row || !row.parentRowId) return 0;
+    return 1 + this.getRowDepth(row.parentRowId);
+  }
+
+  /**
+   * Check if a row has any children
+   */
+  hasChildren(rowId: string): boolean {
+    return Array.from(this.rows.values()).some(
+      (r) => r.parentRowId === rowId && !r.archived
+    );
+  }
+
+  /**
+   * Get direct children of a row
+   */
+  async getChildren(rowId: string): Promise<Row[]> {
+    return Array.from(this.rows.values()).filter(
+      (r) => r.parentRowId === rowId && !r.archived
+    );
   }
 
   // =========================================================================

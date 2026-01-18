@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MemoryAdapter } from '@marlinjai/data-table-adapter-memory';
-import type { FileStorageAdapter, UploadedFile, FileUploadOptions, Row } from '@marlinjai/data-table-core';
+import type { FileStorageAdapter, UploadedFile, FileUploadOptions, Row, GroupConfig, SubItemsConfig } from '@marlinjai/data-table-core';
 import {
   DataTableProvider,
   TableView,
@@ -138,6 +138,14 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
   } = useViews({ tableId });
 
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [groupConfig, setGroupConfig] = useState<GroupConfig | undefined>(undefined);
+  const [subItemsConfig, setSubItemsConfig] = useState<SubItemsConfig>({
+    enabled: true,
+    displayMode: 'nested',
+    filterMode: 'all',
+    collapsedParents: [],
+  });
+  const [columnOrder, setColumnOrder] = useState<string[] | undefined>(undefined);
 
   // Find the Status column ID for BoardView grouping
   const statusColumnId = columns.find((col) => col.name === 'Status')?.id;
@@ -155,6 +163,37 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
     if (type === 'select' || type === 'multi_select') {
       await loadSelectOptions(column.id);
     }
+  };
+
+  // Column reorder handler
+  const handleColumnReorder = (columnId: string, newPosition: number) => {
+    const currentOrder = columnOrder || columns.map((c) => c.id);
+    const oldIndex = currentOrder.indexOf(columnId);
+    if (oldIndex === -1) return;
+
+    const newOrder = [...currentOrder];
+    newOrder.splice(oldIndex, 1);
+    newOrder.splice(newPosition, 0, columnId);
+    setColumnOrder(newOrder);
+  };
+
+  // Sub-items handlers
+  const handleExpandRow = (rowId: string) => {
+    setSubItemsConfig((prev) => ({
+      ...prev,
+      collapsedParents: prev.collapsedParents?.filter((id) => id !== rowId) || [],
+    }));
+  };
+
+  const handleCollapseRow = (rowId: string) => {
+    setSubItemsConfig((prev) => ({
+      ...prev,
+      collapsedParents: [...(prev.collapsedParents || []), rowId],
+    }));
+  };
+
+  const handleCreateSubItem = async (parentRowId: string) => {
+    await addRow({ parentRowId });
   };
 
   // Relation callbacks using the dbAdapter
@@ -308,6 +347,47 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
         />
       )}
 
+      {/* Grouping Controls */}
+      {(!currentView || currentView.type === 'table') && (
+        <div style={{ marginBottom: '12px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <label style={{ fontSize: '14px', color: '#374151' }}>
+            Group by:
+            <select
+              value={groupConfig?.columnId || ''}
+              onChange={(e) => {
+                if (e.target.value) {
+                  setGroupConfig({ columnId: e.target.value, direction: 'asc', hideEmptyGroups: false, collapsedGroups: [] });
+                } else {
+                  setGroupConfig(undefined);
+                }
+              }}
+              style={{ marginLeft: '8px', padding: '4px 8px', borderRadius: '4px', border: '1px solid #d1d5db' }}
+            >
+              <option value="">None</option>
+              {columns.filter(c => ['text', 'select', 'multi_select', 'boolean'].includes(c.type)).map((col) => (
+                <option key={col.id} value={col.id}>{col.name}</option>
+              ))}
+            </select>
+          </label>
+          <label style={{ fontSize: '14px', color: '#374151', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <input
+              type="checkbox"
+              checked={subItemsConfig.enabled}
+              onChange={(e) => setSubItemsConfig(prev => ({ ...prev, enabled: e.target.checked }))}
+            />
+            Sub-items
+          </label>
+          {columnOrder && (
+            <button
+              onClick={() => setColumnOrder(undefined)}
+              style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontSize: '13px' }}
+            >
+              Reset Column Order
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Conditional View Rendering */}
       {(!currentView || currentView.type === 'table') && (
         <TableView
@@ -333,6 +413,15 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
           isLoading={isRowsLoading}
           hasMore={hasMore}
           onLoadMore={loadMore}
+          // New features
+          groupConfig={groupConfig}
+          onGroupConfigChange={setGroupConfig}
+          subItemsConfig={subItemsConfig}
+          onExpandRow={handleExpandRow}
+          onCollapseRow={handleCollapseRow}
+          onCreateSubItem={handleCreateSubItem}
+          columnOrder={columnOrder}
+          onColumnReorder={handleColumnReorder}
           style={{ backgroundColor: 'white' }}
         />
       )}
@@ -381,6 +470,9 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
           <li><b>Sort</b> - Click column headers to sort (click again to toggle)</li>
           <li><b>Filter</b> - Use the filter bar above the table</li>
           <li><b>Resize columns</b> - Drag the edge of any column header</li>
+          <li><b>Reorder columns</b> - Drag the grip handle on column headers to reorder</li>
+          <li><b>Group rows</b> - Use the "Group by" dropdown to group rows by a column</li>
+          <li><b>Sub-items</b> - Hover over a row to see the "+" button, click to create a sub-item</li>
           <li><b>Add properties</b> - Click "+ New property" to add a column</li>
           <li><b>Select rows</b> - Use checkboxes, then bulk delete</li>
           <li><b>Add rows</b> - Click "+ New row" at the bottom</li>

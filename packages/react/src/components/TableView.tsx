@@ -1,6 +1,16 @@
-import { useCallback, useState, useRef, useEffect, useMemo } from 'react';
-import type { Column, Row, CellValue, SelectOption, QuerySort, ColumnType, FileReference } from '@marlinjai/data-table-core';
+import React, { useCallback, useState, useRef, useEffect, useMemo } from 'react';
+import type { Column, Row, CellValue, SelectOption, QuerySort, ColumnType, FileReference, SubItemsConfig, GroupConfig } from '@marlinjai/data-table-core';
 import { CellRenderer } from './cells/CellRenderer';
+import { GroupHeader } from './GroupHeader';
+import { useGrouping } from '../hooks/useGrouping';
+import { useDragAndDrop } from '../hooks/useDragAndDrop';
+
+// Tree node for hierarchical row rendering
+interface RowTreeNode {
+  row: Row;
+  depth: number;
+  children: RowTreeNode[];
+}
 
 export interface TableViewProps {
   columns: Column[];
@@ -17,7 +27,9 @@ export interface TableViewProps {
 
   // Column actions
   onColumnResize?: (columnId: string, width: number) => void;
+  onColumnReorder?: (columnId: string, newPosition: number) => void;
   onAddProperty?: (name: string, type: ColumnType) => void;
+  columnOrder?: string[];
 
   // Select option management
   onCreateSelectOption?: (columnId: string, name: string, color?: string) => Promise<SelectOption>;
@@ -47,6 +59,17 @@ export interface TableViewProps {
   hasMore?: boolean;
   onLoadMore?: () => void;
 
+  // Sub-items / Hierarchical rows
+  subItemsConfig?: SubItemsConfig;
+  onExpandRow?: (rowId: string) => void;
+  onCollapseRow?: (rowId: string) => void;
+  onCreateSubItem?: (parentRowId: string) => void;
+
+  // Grouping
+  groupConfig?: GroupConfig;
+  onGroupConfigChange?: (config: GroupConfig | undefined) => void;
+  onToggleGroupCollapse?: (groupValue: string) => void;
+
   // Styling
   className?: string;
   style?: React.CSSProperties;
@@ -75,7 +98,9 @@ export function TableView({
   onAddRow,
   onDeleteRow,
   onColumnResize,
+  onColumnReorder,
   onAddProperty,
+  columnOrder,
   onCreateSelectOption,
   onUpdateSelectOption,
   onDeleteSelectOption,
@@ -90,9 +115,28 @@ export function TableView({
   isLoading,
   hasMore,
   onLoadMore,
+  subItemsConfig,
+  onExpandRow,
+  onCollapseRow,
+  onCreateSubItem,
+  groupConfig,
+  onGroupConfigChange,
+  onToggleGroupCollapse,
   className,
   style,
 }: TableViewProps) {
+  // Local expanded state (used when subItemsConfig is provided but collapsedParents is managed internally)
+  const [localCollapsedParents, setLocalCollapsedParents] = useState<Set<string>>(
+    () => new Set(subItemsConfig?.collapsedParents ?? [])
+  );
+
+  // Sync localCollapsedParents with subItemsConfig.collapsedParents when it changes
+  useEffect(() => {
+    if (subItemsConfig?.collapsedParents) {
+      setLocalCollapsedParents(new Set(subItemsConfig.collapsedParents));
+    }
+  }, [subItemsConfig?.collapsedParents]);
+
   const [columnWidths, setColumnWidths] = useState<Map<string, number>>(() => {
     const map = new Map<string, number>();
     columns.forEach((col) => map.set(col.id, col.width));
@@ -102,8 +146,162 @@ export function TableView({
   const [showNewProperty, setShowNewProperty] = useState(false);
   const [newPropertyName, setNewPropertyName] = useState('');
   const [newPropertyType, setNewPropertyType] = useState<ColumnType>('text');
+  const [hoveredColumnId, setHoveredColumnId] = useState<string | null>(null);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
+
+  // Sort columns based on columnOrder prop if provided
+  const orderedColumns = useMemo(() => {
+    if (!columnOrder || columnOrder.length === 0) {
+      return columns;
+    }
+
+    const columnMap = new Map(columns.map((col) => [col.id, col]));
+    const ordered: Column[] = [];
+
+    // Add columns in the specified order
+    for (const id of columnOrder) {
+      const col = columnMap.get(id);
+      if (col) {
+        ordered.push(col);
+        columnMap.delete(id);
+      }
+    }
+
+    // Add any remaining columns not in the order
+    for (const col of columnMap.values()) {
+      ordered.push(col);
+    }
+
+    return ordered;
+  }, [columns, columnOrder]);
+
+  // Build tree structure for hierarchical rows
+  const { rowTree, rowChildrenMap, flattenedRows } = useMemo(() => {
+    // If sub-items are not enabled, return flat structure
+    if (!subItemsConfig?.enabled) {
+      return {
+        rowTree: rows.map((row) => ({ row, depth: 0, children: [] })),
+        rowChildrenMap: new Map<string, Row[]>(),
+        flattenedRows: rows.map((row) => ({ row, depth: 0, hasChildren: false })),
+      };
+    }
+
+    // Build parent-children map
+    const childrenMap = new Map<string, Row[]>();
+    const topLevelRows: Row[] = [];
+
+    for (const row of rows) {
+      if (row.parentRowId) {
+        const siblings = childrenMap.get(row.parentRowId) ?? [];
+        siblings.push(row);
+        childrenMap.set(row.parentRowId, siblings);
+      } else {
+        topLevelRows.push(row);
+      }
+    }
+
+    // Build tree recursively
+    const buildNode = (row: Row, depth: number): RowTreeNode => {
+      const children = childrenMap.get(row.id) ?? [];
+      return {
+        row,
+        depth,
+        children: children.map((child) => buildNode(child, depth + 1)),
+      };
+    };
+
+    const tree = topLevelRows.map((row) => buildNode(row, 0));
+
+    // Flatten tree for rendering, respecting collapsed state
+    const flattened: Array<{ row: Row; depth: number; hasChildren: boolean }> = [];
+
+    const flattenNode = (node: RowTreeNode) => {
+      const hasChildren = node.children.length > 0;
+      flattened.push({ row: node.row, depth: node.depth, hasChildren });
+
+      const isCollapsed = localCollapsedParents.has(node.row.id);
+      if (!isCollapsed && hasChildren) {
+        for (const child of node.children) {
+          flattenNode(child);
+        }
+      }
+    };
+
+    for (const node of tree) {
+      flattenNode(node);
+    }
+
+    return {
+      rowTree: tree,
+      rowChildrenMap: childrenMap,
+      flattenedRows: flattened,
+    };
+  }, [rows, subItemsConfig?.enabled, localCollapsedParents]);
+
+  // Toggle expand/collapse for a row
+  const handleToggleExpand = useCallback(
+    (rowId: string) => {
+      const isCurrentlyCollapsed = localCollapsedParents.has(rowId);
+
+      if (isCurrentlyCollapsed) {
+        // Expand
+        setLocalCollapsedParents((prev) => {
+          const next = new Set(prev);
+          next.delete(rowId);
+          return next;
+        });
+        onExpandRow?.(rowId);
+      } else {
+        // Collapse
+        setLocalCollapsedParents((prev) => new Set(prev).add(rowId));
+        onCollapseRow?.(rowId);
+      }
+    },
+    [localCollapsedParents, onExpandRow, onCollapseRow]
+  );
+
+  // Drag and drop for column reordering
+  const {
+    isDragging,
+    getDragProps,
+    isItemDragging,
+    isDropTarget,
+    getDropPosition,
+  } = useDragAndDrop({
+    items: orderedColumns,
+    onReorder: onColumnReorder,
+    isDisabled: !onColumnReorder || resizingColumn !== null,
+  });
+
+  // Grouping hook
+  const { groups, isGrouped } = useGrouping({
+    rows,
+    columns: orderedColumns,
+    groupConfig,
+    selectOptions,
+  });
+
+  // Handler for toggling group collapse
+  const handleToggleGroupCollapse = useCallback(
+    (groupValue: string) => {
+      if (onToggleGroupCollapse) {
+        onToggleGroupCollapse(groupValue);
+      } else if (onGroupConfigChange && groupConfig) {
+        // Fallback: manage collapse state via groupConfig
+        const collapsedGroups = groupConfig.collapsedGroups ?? [];
+        const isCollapsed = collapsedGroups.includes(groupValue);
+        const newCollapsedGroups = isCollapsed
+          ? collapsedGroups.filter((v) => v !== groupValue)
+          : [...collapsedGroups, groupValue];
+        onGroupConfigChange({
+          ...groupConfig,
+          collapsedGroups: newCollapsedGroups,
+        });
+      }
+    },
+    [onToggleGroupCollapse, onGroupConfigChange, groupConfig]
+  );
 
   // Update widths when columns change
   useEffect(() => {
@@ -226,6 +424,214 @@ export function TableView({
 
   const totalColumns = columns.length + (onSelectionChange ? 1 : 0) + (onDeleteRow ? 1 : 0) + (onAddProperty ? 1 : 0);
 
+  // Helper function to render a single data row
+  const renderDataRow = (row: Row, depth: number, hasChildren: boolean) => {
+    const isExpanded = !localCollapsedParents.has(row.id);
+    const indentPx = depth * 24; // 24px per nesting level
+
+    return (
+      <tr
+        key={row.id}
+        style={{
+          backgroundColor: selectedRows.has(row.id) ? '#eff6ff' : 'white',
+        }}
+      >
+        {onSelectionChange && (
+          <td
+            style={{
+              padding: '4px 8px',
+              borderBottom: '1px solid #e5e7eb',
+              textAlign: 'center',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={selectedRows.has(row.id)}
+              onChange={() => handleSelectRow(row.id)}
+              style={{ cursor: 'pointer' }}
+            />
+          </td>
+        )}
+        {orderedColumns.map((column, colIndex) => {
+          const width = getColumnWidth(column.id);
+          const isFirstColumn = colIndex === 0;
+
+          return (
+            <td
+              key={column.id}
+              style={{
+                width,
+                minWidth: width,
+                maxWidth: width,
+                borderBottom: '1px solid #e5e7eb',
+                verticalAlign: 'middle',
+                overflow: column.type === 'select' || column.type === 'multi_select' || column.type === 'file' || column.type === 'relation' ? 'visible' : 'hidden',
+                position: column.type === 'select' || column.type === 'multi_select' || column.type === 'file' || column.type === 'relation' ? 'relative' : undefined,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  paddingLeft: isFirstColumn && subItemsConfig?.enabled ? indentPx : 0,
+                }}
+              >
+                {/* Expand/collapse toggle for first column when sub-items enabled */}
+                {isFirstColumn && subItemsConfig?.enabled && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginRight: '4px',
+                      minWidth: '20px',
+                    }}
+                  >
+                    {hasChildren ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleExpand(row.id);
+                        }}
+                        style={{
+                          padding: '2px',
+                          border: 'none',
+                          background: 'none',
+                          cursor: 'pointer',
+                          color: '#6b7280',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '3px',
+                          transition: 'background-color 0.15s',
+                        }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.backgroundColor = '#f3f4f6')
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.backgroundColor = 'transparent')
+                        }
+                        title={isExpanded ? 'Collapse' : 'Expand'}
+                      >
+                        <span
+                          style={{
+                            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                            display: 'inline-block',
+                            transition: 'transform 0.15s',
+                          }}
+                        >
+                          &#9654;
+                        </span>
+                      </button>
+                    ) : onCreateSubItem ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCreateSubItem(row.id);
+                        }}
+                        className="dt-add-subitem-btn"
+                        style={{
+                          padding: '2px',
+                          border: 'none',
+                          background: 'none',
+                          cursor: 'pointer',
+                          color: '#d1d5db',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '3px',
+                          opacity: 0,
+                          transition: 'opacity 0.15s, background-color 0.15s',
+                        }}
+                        title="Add sub-item"
+                      >
+                        +
+                      </button>
+                    ) : (
+                      <span style={{ width: '20px' }} />
+                    )}
+                  </div>
+                )}
+
+                {/* Cell content */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <CellRenderer
+                    column={column}
+                    value={row.cells[column.id]}
+                    onChange={(value) => handleCellChange(row.id, column.id, value)}
+                    selectOptions={selectOptions.get(column.id)}
+                    readOnly={readOnly}
+                    onCreateOption={
+                      onCreateSelectOption
+                        ? (name, color) => onCreateSelectOption(column.id, name, color)
+                        : undefined
+                    }
+                    onUpdateOption={onUpdateSelectOption}
+                    onDeleteOption={
+                      onDeleteSelectOption
+                        ? (optionId) => onDeleteSelectOption(column.id, optionId)
+                        : undefined
+                    }
+                    onUploadFile={
+                      onUploadFile
+                        ? (file) => onUploadFile(row.id, column.id, file)
+                        : undefined
+                    }
+                    onDeleteFile={
+                      onDeleteFile
+                        ? (fileId) => onDeleteFile(row.id, column.id, fileId)
+                        : undefined
+                    }
+                    onSearchRelationRows={onSearchRelationRows}
+                    onGetRelationRowTitle={onGetRelationRowTitle}
+                  />
+                </div>
+              </div>
+            </td>
+          );
+        })}
+        {/* Empty cell for add property column */}
+        {onAddProperty && (
+          <td
+            style={{
+              borderBottom: '1px solid #e5e7eb',
+            }}
+          />
+        )}
+        {onDeleteRow && (
+          <td
+            style={{
+              padding: '4px 8px',
+              borderBottom: '1px solid #e5e7eb',
+              textAlign: 'center',
+            }}
+          >
+            <button
+              onClick={() => onDeleteRow(row.id)}
+              style={{
+                padding: '4px 8px',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: '#9ca3af',
+                fontSize: '14px',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#9ca3af')}
+            >
+              x
+            </button>
+          </td>
+        )}
+      </tr>
+    );
+  };
+
   return (
     <div
       className={`dt-table-view ${className ?? ''}`}
@@ -236,7 +642,7 @@ export function TableView({
         ...style,
       }}
     >
-      {/* Hide scrollbar CSS */}
+      {/* Hide scrollbar CSS and drag/drop styles */}
       <style>{`
         .dt-table-scroll-container {
           overflow-x: scroll;
@@ -246,6 +652,63 @@ export function TableView({
         }
         .dt-table-scroll-container::-webkit-scrollbar {
           display: none; /* Chrome/Safari/Opera */
+        }
+        .dt-column-header {
+          position: relative;
+        }
+        .dt-column-header.dt-dragging {
+          opacity: 0.5;
+        }
+        .dt-column-header.dt-drag-over-before::before {
+          content: '';
+          position: absolute;
+          left: -1px;
+          top: 0;
+          bottom: 0;
+          width: 2px;
+          background-color: #2563eb;
+          z-index: 10;
+        }
+        .dt-column-header.dt-drag-over-after::after {
+          content: '';
+          position: absolute;
+          right: -1px;
+          top: 0;
+          bottom: 0;
+          width: 2px;
+          background-color: #2563eb;
+          z-index: 10;
+        }
+        .dt-drag-handle {
+          opacity: 0;
+          cursor: grab;
+          color: #9ca3af;
+          display: flex;
+          align-items: center;
+          padding: 2px;
+          margin-right: 4px;
+          border-radius: 2px;
+          transition: opacity 0.15s ease-in-out;
+          flex-shrink: 0;
+        }
+        .dt-drag-handle:hover {
+          background-color: #e5e7eb;
+          color: #6b7280;
+        }
+        .dt-drag-handle:active {
+          cursor: grabbing;
+        }
+        .dt-column-header:hover .dt-drag-handle,
+        .dt-column-header.dt-dragging .dt-drag-handle {
+          opacity: 1;
+        }
+        /* Show add sub-item button on row hover */
+        tr:hover .dt-add-subitem-btn {
+          opacity: 1 !important;
+        }
+        tr:hover .dt-add-subitem-btn:hover {
+          color: #6b7280 !important;
+          background-color: #f3f4f6;
         }
       `}</style>
       <div className="dt-table-scroll-container">
@@ -277,12 +740,27 @@ export function TableView({
                   />
                 </th>
               )}
-              {columns.map((column) => {
+              {orderedColumns.map((column) => {
                 const sortDir = getSortDirection(column.id);
                 const width = getColumnWidth(column.id);
+                const isDraggingThis = isItemDragging(column.id);
+                const isDropTargetThis = isDropTarget(column.id);
+                const dropPosition = getDropPosition(column.id);
+                const dragProps = getDragProps(column.id);
+                const canDrag = !!onColumnReorder && !resizingColumn;
+
+                // Build className for drag states
+                const headerClasses = [
+                  'dt-column-header',
+                  isDraggingThis ? 'dt-dragging' : '',
+                  isDropTargetThis && dropPosition === 'before' ? 'dt-drag-over-before' : '',
+                  isDropTargetThis && dropPosition === 'after' ? 'dt-drag-over-after' : '',
+                ].filter(Boolean).join(' ');
+
                 return (
                   <th
                     key={column.id}
+                    className={headerClasses}
                     style={{
                       width,
                       minWidth: width,
@@ -292,14 +770,48 @@ export function TableView({
                       textAlign: 'left',
                       fontWeight: 500,
                       color: '#374151',
-                      cursor: onSortChange ? 'pointer' : 'default',
+                      cursor: isDragging ? 'grabbing' : (onSortChange ? 'pointer' : 'default'),
                       userSelect: 'none',
                       position: 'relative',
                     }}
-                    onClick={() => handleSort(column.id)}
+                    onClick={() => !isDragging && handleSort(column.id)}
+                    onMouseEnter={() => setHoveredColumnId(column.id)}
+                    onMouseLeave={() => setHoveredColumnId(null)}
+                    {...(canDrag ? {
+                      draggable: dragProps.draggable,
+                      onDragStart: dragProps.onDragStart,
+                      onDragOver: dragProps.onDragOver,
+                      onDragEnd: dragProps.onDragEnd,
+                      onDrop: dragProps.onDrop,
+                      onDragLeave: dragProps.onDragLeave,
+                    } : {})}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {/* Drag handle */}
+                      {canDrag && (
+                        <span
+                          className="dt-drag-handle"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
+                          title="Drag to reorder"
+                        >
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 12 12"
+                            fill="currentColor"
+                            style={{ display: 'block' }}
+                          >
+                            <circle cx="3" cy="2" r="1" />
+                            <circle cx="7" cy="2" r="1" />
+                            <circle cx="3" cy="6" r="1" />
+                            <circle cx="7" cy="6" r="1" />
+                            <circle cx="3" cy="10" r="1" />
+                            <circle cx="7" cy="10" r="1" />
+                          </svg>
+                        </span>
+                      )}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                         {column.name}
                       </span>
                       {sortDir && (
@@ -446,115 +958,30 @@ export function TableView({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr
-                key={row.id}
-                style={{
-                  backgroundColor: selectedRows.has(row.id) ? '#eff6ff' : 'white',
-                }}
-              >
-                {onSelectionChange && (
-                  <td
-                    style={{
-                      padding: '4px 8px',
-                      borderBottom: '1px solid #e5e7eb',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedRows.has(row.id)}
-                      onChange={() => handleSelectRow(row.id)}
-                      style={{ cursor: 'pointer' }}
-                    />
-                  </td>
-                )}
-                {columns.map((column) => {
-                  const width = getColumnWidth(column.id);
-                  return (
-                    <td
-                      key={column.id}
-                      style={{
-                        width,
-                        minWidth: width,
-                        maxWidth: width,
-                        borderBottom: '1px solid #e5e7eb',
-                        verticalAlign: 'middle',
-                        overflow: column.type === 'select' || column.type === 'multi_select' || column.type === 'file' || column.type === 'relation' ? 'visible' : 'hidden',
-                        position: column.type === 'select' || column.type === 'multi_select' || column.type === 'file' || column.type === 'relation' ? 'relative' : undefined,
-                      }}
-                    >
-                      <CellRenderer
-                        column={column}
-                        value={row.cells[column.id]}
-                        onChange={(value) => handleCellChange(row.id, column.id, value)}
-                        selectOptions={selectOptions.get(column.id)}
-                        readOnly={readOnly}
-                        onCreateOption={
-                          onCreateSelectOption
-                            ? (name, color) => onCreateSelectOption(column.id, name, color)
-                            : undefined
-                        }
-                        onUpdateOption={onUpdateSelectOption}
-                        onDeleteOption={
-                          onDeleteSelectOption
-                            ? (optionId) => onDeleteSelectOption(column.id, optionId)
-                            : undefined
-                        }
-                        onUploadFile={
-                          onUploadFile
-                            ? (file) => onUploadFile(row.id, column.id, file)
-                            : undefined
-                        }
-                        onDeleteFile={
-                          onDeleteFile
-                            ? (fileId) => onDeleteFile(row.id, column.id, fileId)
-                            : undefined
-                        }
-                        onSearchRelationRows={onSearchRelationRows}
-                        onGetRelationRowTitle={onGetRelationRowTitle}
-                      />
-                    </td>
-                  );
-                })}
-                {/* Empty cell for add property column */}
-                {onAddProperty && (
-                  <td
-                    style={{
-                      borderBottom: '1px solid #e5e7eb',
-                    }}
+            {/* Render rows - either grouped or flat/hierarchical */}
+            {isGrouped ? (
+              // Grouped rendering
+              groups.map((group) => (
+                <React.Fragment key={group.value}>
+                  <GroupHeader
+                    label={group.label}
+                    rowCount={group.rows.length}
+                    isCollapsed={group.isCollapsed}
+                    onToggleCollapse={() => handleToggleGroupCollapse(group.value)}
+                    colSpan={totalColumns}
                   />
-                )}
-                {onDeleteRow && (
-                  <td
-                    style={{
-                      padding: '4px 8px',
-                      borderBottom: '1px solid #e5e7eb',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <button
-                      onClick={() => onDeleteRow(row.id)}
-                      style={{
-                        padding: '4px 8px',
-                        border: 'none',
-                        background: 'none',
-                        cursor: 'pointer',
-                        color: '#9ca3af',
-                        fontSize: '14px',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = '#9ca3af')}
-                    >
-                      ×
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
+                  {!group.isCollapsed && group.rows.map((row) => renderDataRow(row, 0, false))}
+                </React.Fragment>
+              ))
+            ) : (
+              // Flat or hierarchical rendering
+              flattenedRows.map(({ row, depth, hasChildren }) =>
+                renderDataRow(row, depth, hasChildren)
+              )
+            )}
 
             {/* Empty state */}
-            {rows.length === 0 && !isLoading && (
+            {(isGrouped ? !groups.some((g) => g.rows.length > 0) : rows.length === 0) && !isLoading && (
               <tr>
                 <td
                   colSpan={totalColumns}
