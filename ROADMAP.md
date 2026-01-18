@@ -4,7 +4,7 @@ This document outlines the current implementation status and planned features fo
 
 ## Implemented Features
 
-### Column Types (11)
+### Column Types (13)
 
 | Type | Status | Description |
 |------|--------|-------------|
@@ -19,6 +19,8 @@ This document outlines the current implementation status and planned features fo
 | `formula` | Complete | 50+ functions, AST caching |
 | `relation` | Complete | Cross-table links, bidirectional |
 | `rollup` | Complete | 14 aggregation types |
+| `created_time` | Complete | Auto-populated on row creation |
+| `last_edited_time` | Complete | Auto-updated on row edit |
 
 ### Views (3 of 6)
 
@@ -46,6 +48,8 @@ This document outlines the current implementation status and planned features fo
 | ViewSwitcher component | Complete |
 | CSS variable theming | Complete |
 | Dark mode | Complete |
+| Footer calculations | Complete |
+| Search within table | Complete |
 
 ### Engines
 
@@ -66,63 +70,41 @@ This document outlines the current implementation status and planned features fo
 
 ## Planned Features
 
-### High Priority
-
-#### 1. Footer Calculations
-Add column footer with aggregation display using existing rollup engine.
-- Show count, sum, average, etc. at bottom of columns
-- Toggle between different aggregation types
-- **Complexity**: Medium (UI for existing engine)
-
-#### 2. Search Within Table
-Quick filter/search across all columns.
-- Global search input
-- Highlight matching cells
-- Filter rows to matches
-- **Complexity**: Medium
-
-#### 3. Auto-Timestamp Columns
-Add `created_time` and `last_edited_time` column types.
-- Auto-populated on row creation
-- Auto-updated on row edit
-- Read-only display
-- **Complexity**: Low
-
 ### Medium Priority
 
-#### 4. Gallery View
+#### 1. Gallery View
 Card-based grid layout for visual content.
 - Image-focused display
 - Configurable card layout
 - Cover image selection
 - **Complexity**: Medium
 
-#### 5. Multi-Column Sort
+#### 2. Multi-Column Sort
 Sort by multiple columns with priority.
 - Sort priority indicators
 - Sort configuration panel
 - **Complexity**: Low (logic exists, needs UI)
 
-#### 6. Column Freeze
+#### 3. Column Freeze
 Sticky columns on horizontal scroll.
 - Freeze leftmost columns
 - Visual separator
 - **Complexity**: Medium
 
-#### 7. Advanced Filter UI
+#### 4. Advanced Filter UI
 AND/OR filter group builder.
 - Nested filter groups
 - Visual filter builder
 - **Complexity**: Medium
 
-#### 8. Export Functionality
+#### 5. Export Functionality
 Export table data to various formats.
 - CSV export
 - JSON export
 - Column selection
 - **Complexity**: Low
 
-#### 9. Import Functionality
+#### 6. Import Functionality
 Import data from files.
 - CSV import with column mapping
 - JSON import
@@ -131,26 +113,26 @@ Import data from files.
 
 ### Lower Priority
 
-#### 10. Status Column Type
+#### 7. Status Column Type
 Preset workflow stages column.
 - Predefined stages (Not Started, In Progress, Done)
 - Progress visualization
 - **Complexity**: Medium
 
-#### 11. Undo/Redo System
+#### 8. Undo/Redo System
 Command pattern for action history.
 - Undo/redo stack
 - Multi-action batching
 - **Complexity**: High
 
-#### 12. Timeline View
+#### 9. Timeline View
 Gantt-style date visualization.
 - Date range bars
 - Drag to resize
 - Dependencies (optional)
 - **Complexity**: High
 
-#### 13. List View
+#### 10. List View
 Simple list format display.
 - Minimal chrome
 - Mobile-friendly
