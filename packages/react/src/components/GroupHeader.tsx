@@ -31,14 +31,14 @@ export function GroupHeader({
     <tr
       className={`dt-group-header ${className ?? ''}`}
       style={{
-        backgroundColor: '#f3f4f6',
+        backgroundColor: 'var(--dt-bg-tertiary)',
       }}
     >
       <td
         colSpan={colSpan}
         style={{
           padding: '8px 12px',
-          borderBottom: '1px solid #e5e7eb',
+          borderBottom: '1px solid var(--dt-border-color)',
           cursor: 'pointer',
           userSelect: 'none',
         }}
@@ -60,7 +60,7 @@ export function GroupHeader({
               width: '20px',
               height: '20px',
               fontSize: '12px',
-              color: '#6b7280',
+              color: 'var(--dt-text-secondary)',
               transition: 'transform 0.15s ease',
               transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
             }}
@@ -72,7 +72,7 @@ export function GroupHeader({
           <span
             style={{
               fontWeight: 600,
-              color: '#374151',
+              color: 'var(--dt-text-primary)',
               fontSize: '14px',
             }}
           >
@@ -83,8 +83,8 @@ export function GroupHeader({
           <span
             style={{
               fontSize: '12px',
-              color: '#6b7280',
-              backgroundColor: '#e5e7eb',
+              color: 'var(--dt-text-secondary)',
+              backgroundColor: 'var(--dt-border-color)',
               padding: '2px 8px',
               borderRadius: '10px',
             }}

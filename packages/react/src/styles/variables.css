@@ -99,10 +99,10 @@
   --dt-tag-brown-text: #7c4a03;
 }
 
-/* ==================== Dark Mode (Auto) ==================== */
+/* ==================== Dark Mode (Auto via system preference) ==================== */
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     /* Backgrounds */
     --dt-bg-primary: #1f2937;
     --dt-bg-secondary: #111827;

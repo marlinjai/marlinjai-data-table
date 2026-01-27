@@ -1,0 +1,70 @@
+/* Demo App CSS Variables */
+
+:root {
+  /* Demo-specific colors (outside the data table) - Light mode defaults */
+  --demo-bg: #f5f5f5;
+  --demo-text-primary: #111;
+  --demo-text-secondary: #666;
+  --demo-border: #e5e7eb;
+  --demo-card-bg: #ffffff;
+  --demo-info-bg: #f0f9ff;
+  --demo-info-text: #0369a1;
+  --demo-info-border: #bae6fd;
+  --demo-button-bg: #f3f4f6;
+  --demo-button-text: #111827;
+  --demo-button-border: #d1d5db;
+  --demo-button-bg-active: #374151;
+  --demo-button-text-active: #f9fafb;
+  --demo-button-border-active: #4b5563;
+  --demo-button-danger: #ef4444;
+  --demo-button-danger-bg: #fef2f2;
+}
+
+/* Dark mode (auto via system preference) */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --demo-bg: #0f172a;
+    --demo-text-primary: #f1f5f9;
+    --demo-text-secondary: #94a3b8;
+    --demo-border: #334155;
+    --demo-card-bg: #1e293b;
+    --demo-info-bg: #1e3a5f;
+    --demo-info-text: #93c5fd;
+    --demo-info-border: #1e40af;
+    --demo-button-bg: #334155;
+    --demo-button-text: #f1f5f9;
+    --demo-button-border: #475569;
+    --demo-button-bg-active: #f1f5f9;
+    --demo-button-text-active: #0f172a;
+    --demo-button-border-active: #cbd5e1;
+    --demo-button-danger: #f87171;
+    --demo-button-danger-bg: #450a0a;
+  }
+}
+
+/* Dark mode (manual via class) */
+.dark {
+  --demo-bg: #0f172a;
+  --demo-text-primary: #f1f5f9;
+  --demo-text-secondary: #94a3b8;
+  --demo-border: #334155;
+  --demo-card-bg: #1e293b;
+  --demo-info-bg: #1e3a5f;
+  --demo-info-text: #93c5fd;
+  --demo-info-border: #1e40af;
+  --demo-button-bg: #334155;
+  --demo-button-text: #f1f5f9;
+  --demo-button-border: #475569;
+  --demo-button-bg-active: #f1f5f9;
+  --demo-button-text-active: #0f172a;
+  --demo-button-border-active: #cbd5e1;
+  --demo-button-danger: #f87171;
+  --demo-button-danger-bg: #450a0a;
+}
+
+/* Apply smooth transitions */
+body {
+  background-color: var(--demo-bg);
+  color: var(--demo-text-primary);
+  transition: background-color 200ms ease, color 200ms ease;
+}

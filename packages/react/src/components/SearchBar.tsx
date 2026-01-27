@@ -141,8 +141,8 @@ export function SearchBar({
         alignItems: 'center',
         gap: '8px',
         padding: '8px 12px',
-        backgroundColor: isFocused ? 'white' : '#f9fafb',
-        border: `1px solid ${isFocused ? '#2563eb' : '#e5e7eb'}`,
+        backgroundColor: isFocused ? 'var(--dt-bg-primary)' : 'var(--dt-bg-secondary)',
+        border: `1px solid ${isFocused ? 'var(--dt-accent-primary)' : 'var(--dt-border-color)'}`,
         borderRadius: '6px',
         transition: 'all 0.15s ease-in-out',
         ...style,
@@ -154,7 +154,7 @@ export function SearchBar({
         height="16"
         viewBox="0 0 24 24"
         fill="none"
-        stroke={isFocused ? '#2563eb' : '#9ca3af'}
+        stroke={isFocused ? 'var(--dt-accent-primary)' : 'var(--dt-text-muted)'}
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -180,7 +180,7 @@ export function SearchBar({
           outline: 'none',
           backgroundColor: 'transparent',
           fontSize: '14px',
-          color: '#374151',
+          color: 'var(--dt-text-primary)',
         }}
       />
 
@@ -189,7 +189,7 @@ export function SearchBar({
         <span
           style={{
             fontSize: '12px',
-            color: resultCount > 0 ? '#6b7280' : '#ef4444',
+            color: resultCount > 0 ? 'var(--dt-text-secondary)' : 'var(--dt-accent-danger)',
             whiteSpace: 'nowrap',
           }}
         >
@@ -208,14 +208,14 @@ export function SearchBar({
             width: '20px',
             height: '20px',
             border: 'none',
-            background: '#e5e7eb',
+            background: 'var(--dt-border-color)',
             borderRadius: '50%',
             cursor: 'pointer',
             flexShrink: 0,
             transition: 'background-color 0.15s',
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#d1d5db')}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#e5e7eb')}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--dt-border-color-strong)')}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--dt-border-color)')}
           title="Clear search (Esc)"
         >
           <svg
@@ -223,7 +223,7 @@ export function SearchBar({
             height="12"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#6b7280"
+            stroke="var(--dt-text-secondary)"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -238,8 +238,8 @@ export function SearchBar({
         <span
           style={{
             fontSize: '11px',
-            color: '#9ca3af',
-            backgroundColor: '#f3f4f6',
+            color: 'var(--dt-text-muted)',
+            backgroundColor: 'var(--dt-bg-tertiary)',
             padding: '2px 6px',
             borderRadius: '4px',
             fontFamily: 'monospace',

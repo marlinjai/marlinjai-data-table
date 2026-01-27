@@ -372,8 +372,8 @@ function FooterCell({ column, rows, calculation, onCalculationChange, width }: F
         minWidth: width,
         maxWidth: width,
         padding: '6px 8px',
-        borderTop: '1px solid #e5e7eb',
-        backgroundColor: '#f9fafb',
+        borderTop: '1px solid var(--dt-border-color)',
+        backgroundColor: 'var(--dt-bg-secondary)',
         position: 'relative',
       }}
     >
@@ -391,18 +391,18 @@ function FooterCell({ column, rows, calculation, onCalculationChange, width }: F
           padding: '4px 6px',
           borderRadius: '4px',
           fontSize: '13px',
-          color: calculation === 'none' ? '#9ca3af' : '#374151',
+          color: calculation === 'none' ? 'var(--dt-text-muted)' : 'var(--dt-text-primary)',
           fontWeight: calculation === 'none' ? 400 : 500,
           transition: 'background-color 0.15s',
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#e5e7eb')}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--dt-border-color)')}
         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
       >
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {calculation === 'none' ? 'Calculate' : calculatedValue}
         </span>
         {calculation !== 'none' && (
-          <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '4px', flexShrink: 0 }}>
+          <span style={{ fontSize: '11px', color: 'var(--dt-text-muted)', marginLeft: '4px', flexShrink: 0 }}>
             {currentOption?.label}
           </span>
         )}
@@ -416,10 +416,10 @@ function FooterCell({ column, rows, calculation, onCalculationChange, width }: F
             top: dropdownPosition.top,
             left: dropdownPosition.left,
             zIndex: 1000,
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
+            backgroundColor: 'var(--dt-bg-primary)',
+            border: '1px solid var(--dt-border-color)',
             borderRadius: '6px',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            boxShadow: 'var(--dt-shadow-md)',
             minWidth: '180px',
             maxHeight: '300px',
             overflowY: 'auto',
@@ -438,13 +438,13 @@ function FooterCell({ column, rows, calculation, onCalculationChange, width }: F
                 textAlign: 'left',
                 padding: '8px 12px',
                 border: 'none',
-                background: calculation === opt.value ? '#eff6ff' : 'white',
+                background: calculation === opt.value ? 'var(--dt-bg-selected)' : 'var(--dt-bg-primary)',
                 cursor: 'pointer',
                 fontSize: '13px',
-                color: '#374151',
+                color: 'var(--dt-text-primary)',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f3f4f6')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = calculation === opt.value ? '#eff6ff' : 'white')}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = calculation === opt.value ? 'var(--dt-bg-selected)' : 'var(--dt-bg-primary)')}
             >
               {opt.label}
             </button>
@@ -489,8 +489,8 @@ export function TableFooter({
               width: '40px',
               minWidth: '40px',
               padding: '6px 8px',
-              borderTop: '1px solid #e5e7eb',
-              backgroundColor: '#f9fafb',
+              borderTop: '1px solid var(--dt-border-color)',
+              backgroundColor: 'var(--dt-bg-secondary)',
             }}
           />
         )}
@@ -510,8 +510,8 @@ export function TableFooter({
               width: '140px',
               minWidth: '140px',
               padding: '6px 8px',
-              borderTop: '1px solid #e5e7eb',
-              backgroundColor: '#f9fafb',
+              borderTop: '1px solid var(--dt-border-color)',
+              backgroundColor: 'var(--dt-bg-secondary)',
             }}
           />
         )}
@@ -521,8 +521,8 @@ export function TableFooter({
               width: '50px',
               minWidth: '50px',
               padding: '6px 8px',
-              borderTop: '1px solid #e5e7eb',
-              backgroundColor: '#f9fafb',
+              borderTop: '1px solid var(--dt-border-color)',
+              backgroundColor: 'var(--dt-bg-secondary)',
             }}
           />
         )}

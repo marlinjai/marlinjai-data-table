@@ -444,14 +444,14 @@ export function TableView({
       <tr
         key={row.id}
         style={{
-          backgroundColor: selectedRows.has(row.id) ? '#eff6ff' : 'white',
+          backgroundColor: selectedRows.has(row.id) ? 'var(--dt-bg-selected)' : 'var(--dt-bg-primary)',
         }}
       >
         {onSelectionChange && (
           <td
             style={{
               padding: '4px 8px',
-              borderBottom: '1px solid #e5e7eb',
+              borderBottom: '1px solid var(--dt-border-color)',
               textAlign: 'center',
             }}
           >
@@ -474,7 +474,7 @@ export function TableView({
                 width,
                 minWidth: width,
                 maxWidth: width,
-                borderBottom: '1px solid #e5e7eb',
+                borderBottom: '1px solid var(--dt-border-color)',
                 verticalAlign: 'middle',
                 overflow: column.type === 'select' || column.type === 'multi_select' || column.type === 'file' || column.type === 'relation' ? 'visible' : 'hidden',
                 position: column.type === 'select' || column.type === 'multi_select' || column.type === 'file' || column.type === 'relation' ? 'relative' : undefined,
@@ -508,7 +508,7 @@ export function TableView({
                           border: 'none',
                           background: 'none',
                           cursor: 'pointer',
-                          color: '#6b7280',
+                          color: 'var(--dt-text-secondary)',
                           fontSize: '12px',
                           display: 'flex',
                           alignItems: 'center',
@@ -519,7 +519,7 @@ export function TableView({
                           transition: 'background-color 0.15s',
                         }}
                         onMouseEnter={(e) =>
-                          (e.currentTarget.style.backgroundColor = '#f3f4f6')
+                          (e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)')
                         }
                         onMouseLeave={(e) =>
                           (e.currentTarget.style.backgroundColor = 'transparent')
@@ -548,7 +548,7 @@ export function TableView({
                           border: 'none',
                           background: 'none',
                           cursor: 'pointer',
-                          color: '#d1d5db',
+                          color: 'var(--dt-border-color-strong)',
                           fontSize: '12px',
                           display: 'flex',
                           alignItems: 'center',
@@ -610,7 +610,7 @@ export function TableView({
         {onAddProperty && (
           <td
             style={{
-              borderBottom: '1px solid #e5e7eb',
+              borderBottom: '1px solid var(--dt-border-color)',
             }}
           />
         )}
@@ -618,7 +618,7 @@ export function TableView({
           <td
             style={{
               padding: '4px 8px',
-              borderBottom: '1px solid #e5e7eb',
+              borderBottom: '1px solid var(--dt-border-color)',
               textAlign: 'center',
             }}
           >
@@ -629,11 +629,11 @@ export function TableView({
                 border: 'none',
                 background: 'none',
                 cursor: 'pointer',
-                color: '#9ca3af',
+                color: 'var(--dt-text-muted)',
                 fontSize: '14px',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = '#9ca3af')}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--dt-accent-danger)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--dt-text-muted)')}
             >
               x
             </button>
@@ -647,9 +647,10 @@ export function TableView({
     <div
       className={`dt-table-view ${className ?? ''}`}
       style={{
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--dt-border-color)',
         borderRadius: '8px',
         position: 'relative',
+        backgroundColor: 'var(--dt-bg-primary)',
         ...style,
       }}
     >
@@ -677,7 +678,7 @@ export function TableView({
           top: 0;
           bottom: 0;
           width: 2px;
-          background-color: #2563eb;
+          background-color: var(--dt-accent-primary);
           z-index: 10;
         }
         .dt-column-header.dt-drag-over-after::after {
@@ -687,13 +688,13 @@ export function TableView({
           top: 0;
           bottom: 0;
           width: 2px;
-          background-color: #2563eb;
+          background-color: var(--dt-accent-primary);
           z-index: 10;
         }
         .dt-drag-handle {
           opacity: 0;
           cursor: grab;
-          color: #9ca3af;
+          color: var(--dt-text-muted);
           display: flex;
           align-items: center;
           padding: 2px;
@@ -703,8 +704,8 @@ export function TableView({
           flex-shrink: 0;
         }
         .dt-drag-handle:hover {
-          background-color: #e5e7eb;
-          color: #6b7280;
+          background-color: var(--dt-border-color);
+          color: var(--dt-text-secondary);
         }
         .dt-drag-handle:active {
           cursor: grabbing;
@@ -718,8 +719,8 @@ export function TableView({
           opacity: 1 !important;
         }
         tr:hover .dt-add-subitem-btn:hover {
-          color: #6b7280 !important;
-          background-color: #f3f4f6;
+          color: var(--dt-text-secondary) !important;
+          background-color: var(--dt-bg-hover);
         }
       `}</style>
       <div className="dt-table-scroll-container">
@@ -732,14 +733,14 @@ export function TableView({
           }}
         >
           <thead>
-            <tr style={{ backgroundColor: '#f9fafb' }}>
+            <tr style={{ backgroundColor: 'var(--dt-bg-secondary)' }}>
               {onSelectionChange && (
                 <th
                   style={{
                     width: '40px',
                     minWidth: '40px',
                     padding: '10px 8px',
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid var(--dt-border-color)',
                     textAlign: 'center',
                   }}
                 >
@@ -777,10 +778,10 @@ export function TableView({
                       minWidth: width,
                       maxWidth: width,
                       padding: '10px 12px',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--dt-border-color)',
                       textAlign: 'left',
                       fontWeight: 500,
-                      color: '#374151',
+                      color: 'var(--dt-text-primary)',
                       cursor: isDragging ? 'grabbing' : (onSortChange ? 'pointer' : 'default'),
                       userSelect: 'none',
                       position: 'relative',
@@ -826,7 +827,7 @@ export function TableView({
                         {column.name}
                       </span>
                       {sortDir && (
-                        <span style={{ color: '#2563eb', fontSize: '12px', flexShrink: 0 }}>
+                        <span style={{ color: 'var(--dt-accent-primary)', fontSize: '12px', flexShrink: 0 }}>
                           {sortDir === 'asc' ? '↑' : '↓'}
                         </span>
                       )}
@@ -842,10 +843,10 @@ export function TableView({
                         bottom: 0,
                         width: '6px',
                         cursor: 'col-resize',
-                        backgroundColor: resizingColumn === column.id ? '#2563eb' : 'transparent',
+                        backgroundColor: resizingColumn === column.id ? 'var(--dt-accent-primary)' : 'transparent',
                       }}
                       onMouseEnter={(e) => {
-                        if (!resizingColumn) e.currentTarget.style.backgroundColor = '#d1d5db';
+                        if (!resizingColumn) e.currentTarget.style.backgroundColor = 'var(--dt-border-color-strong)';
                       }}
                       onMouseLeave={(e) => {
                         if (!resizingColumn) e.currentTarget.style.backgroundColor = 'transparent';
@@ -861,7 +862,7 @@ export function TableView({
                     width: '140px',
                     minWidth: '140px',
                     padding: '10px 12px',
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid var(--dt-border-color)',
                     textAlign: 'left',
                     fontWeight: 400,
                   }}
@@ -880,10 +881,12 @@ export function TableView({
                         }}
                         style={{
                           padding: '4px 6px',
-                          border: '1px solid #d1d5db',
+                          border: '1px solid var(--dt-border-color-strong)',
                           borderRadius: '4px',
                           fontSize: '13px',
                           width: '100%',
+                          backgroundColor: 'var(--dt-bg-primary)',
+                          color: 'var(--dt-text-primary)',
                         }}
                       />
                       <select
@@ -891,10 +894,12 @@ export function TableView({
                         onChange={(e) => setNewPropertyType(e.target.value as ColumnType)}
                         style={{
                           padding: '4px 6px',
-                          border: '1px solid #d1d5db',
+                          border: '1px solid var(--dt-border-color-strong)',
                           borderRadius: '4px',
                           fontSize: '13px',
                           width: '100%',
+                          backgroundColor: 'var(--dt-bg-primary)',
+                          color: 'var(--dt-text-primary)',
                         }}
                       >
                         {COLUMN_TYPES.map((type) => (
@@ -909,8 +914,8 @@ export function TableView({
                           style={{
                             flex: 1,
                             padding: '4px',
-                            backgroundColor: '#2563eb',
-                            color: 'white',
+                            backgroundColor: 'var(--dt-accent-primary)',
+                            color: 'var(--dt-bg-primary)',
                             border: 'none',
                             borderRadius: '4px',
                             cursor: 'pointer',
@@ -923,7 +928,8 @@ export function TableView({
                           onClick={() => setShowNewProperty(false)}
                           style={{
                             padding: '4px 8px',
-                            backgroundColor: '#e5e7eb',
+                            backgroundColor: 'var(--dt-border-color)',
+                            color: 'var(--dt-text-primary)',
                             border: 'none',
                             borderRadius: '4px',
                             cursor: 'pointer',
@@ -942,14 +948,14 @@ export function TableView({
                         border: 'none',
                         background: 'none',
                         cursor: 'pointer',
-                        color: '#9ca3af',
+                        color: 'var(--dt-text-muted)',
                         fontSize: '13px',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '4px',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = '#374151')}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = '#9ca3af')}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--dt-text-primary)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--dt-text-muted)')}
                     >
                       + New property
                     </button>
@@ -962,7 +968,7 @@ export function TableView({
                     width: '50px',
                     minWidth: '50px',
                     padding: '10px 8px',
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid var(--dt-border-color)',
                   }}
                 />
               )}
@@ -999,7 +1005,7 @@ export function TableView({
                   style={{
                     padding: '32px',
                     textAlign: 'center',
-                    color: '#9ca3af',
+                    color: 'var(--dt-text-muted)',
                   }}
                 >
                   No data yet
@@ -1015,7 +1021,7 @@ export function TableView({
                   style={{
                     padding: '16px',
                     textAlign: 'center',
-                    color: '#9ca3af',
+                    color: 'var(--dt-text-muted)',
                   }}
                 >
                   Loading...
@@ -1046,8 +1052,8 @@ export function TableView({
           justifyContent: 'space-between',
           alignItems: 'center',
           padding: '8px 12px',
-          borderTop: '1px solid #e5e7eb',
-          backgroundColor: '#f9fafb',
+          borderTop: '1px solid var(--dt-border-color)',
+          backgroundColor: 'var(--dt-bg-secondary)',
         }}
       >
         {onAddRow ? (
@@ -1055,12 +1061,12 @@ export function TableView({
             onClick={onAddRow}
             style={{
               padding: '6px 12px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--dt-border-color)',
               borderRadius: '4px',
-              backgroundColor: 'white',
+              backgroundColor: 'var(--dt-bg-primary)',
               cursor: 'pointer',
               fontSize: '13px',
-              color: '#374151',
+              color: 'var(--dt-text-primary)',
             }}
           >
             + New row
@@ -1075,12 +1081,12 @@ export function TableView({
             disabled={isLoading}
             style={{
               padding: '6px 12px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--dt-border-color)',
               borderRadius: '4px',
-              backgroundColor: 'white',
+              backgroundColor: 'var(--dt-bg-primary)',
               cursor: isLoading ? 'not-allowed' : 'pointer',
               fontSize: '13px',
-              color: '#374151',
+              color: 'var(--dt-text-primary)',
               opacity: isLoading ? 0.5 : 1,
             }}
           >

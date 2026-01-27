@@ -13,23 +13,21 @@ export interface MultiSelectCellProps {
   onDeleteOption?: (optionId: string) => Promise<void>;
 }
 
-const DEFAULT_COLORS: Record<string, { bg: string; text: string }> = {
-  gray: { bg: '#e5e7eb', text: '#374151' },
-  red: { bg: '#fee2e2', text: '#991b1b' },
-  orange: { bg: '#ffedd5', text: '#9a3412' },
-  yellow: { bg: '#fef3c7', text: '#92400e' },
-  green: { bg: '#dcfce7', text: '#166534' },
-  blue: { bg: '#dbeafe', text: '#1e40af' },
-  purple: { bg: '#f3e8ff', text: '#6b21a8' },
-  pink: { bg: '#fce7f3', text: '#9d174d' },
-  brown: { bg: '#fae5d3', text: '#7c4a03' },
-};
-
-const COLOR_OPTIONS = Object.keys(DEFAULT_COLORS);
+const COLOR_OPTIONS = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'brown'];
 
 function getColorStyles(color?: string): { bg: string; text: string } {
-  if (!color) return DEFAULT_COLORS.gray;
-  return DEFAULT_COLORS[color] ?? DEFAULT_COLORS.gray;
+  const colorMap: Record<string, { bg: string; text: string }> = {
+    gray: { bg: 'var(--dt-tag-gray-bg)', text: 'var(--dt-tag-gray-text)' },
+    red: { bg: 'var(--dt-tag-red-bg)', text: 'var(--dt-tag-red-text)' },
+    orange: { bg: 'var(--dt-tag-orange-bg)', text: 'var(--dt-tag-orange-text)' },
+    yellow: { bg: 'var(--dt-tag-yellow-bg)', text: 'var(--dt-tag-yellow-text)' },
+    green: { bg: 'var(--dt-tag-green-bg)', text: 'var(--dt-tag-green-text)' },
+    blue: { bg: 'var(--dt-tag-blue-bg)', text: 'var(--dt-tag-blue-text)' },
+    purple: { bg: 'var(--dt-tag-purple-bg)', text: 'var(--dt-tag-purple-text)' },
+    pink: { bg: 'var(--dt-tag-pink-bg)', text: 'var(--dt-tag-pink-text)' },
+    brown: { bg: 'var(--dt-tag-brown-bg)', text: 'var(--dt-tag-brown-text)' },
+  };
+  return colorMap[color ?? 'gray'] ?? colorMap.gray;
 }
 
 export function MultiSelectCell({
@@ -226,7 +224,7 @@ export function MultiSelectCell({
             );
           })
         ) : (
-          <span style={{ color: '#999' }}>Select...</span>
+          <span style={{ color: 'var(--dt-text-muted)' }}>Select...</span>
         )}
       </div>
 
@@ -242,15 +240,15 @@ export function MultiSelectCell({
             minWidth: '220px',
             maxHeight: '300px',
             overflowY: 'auto',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
+            backgroundColor: 'var(--dt-bg-primary)',
+            border: '1px solid var(--dt-border-color)',
             borderRadius: '6px',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            boxShadow: 'var(--dt-shadow-md)',
           }}
         >
           {/* Search/Create input */}
           {onCreateOption && (
-            <div style={{ padding: '8px', borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ padding: '8px', borderBottom: '1px solid var(--dt-border-color)' }}>
               <input
                 type="text"
                 value={newOptionName}
@@ -267,10 +265,12 @@ export function MultiSelectCell({
                 style={{
                   width: '100%',
                   padding: '6px 8px',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--dt-border-color-strong)',
                   borderRadius: '4px',
                   fontSize: '13px',
                   outline: 'none',
+                  backgroundColor: 'var(--dt-bg-primary)',
+                  color: 'var(--dt-text-primary)',
                 }}
               />
             </div>
@@ -291,16 +291,16 @@ export function MultiSelectCell({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  backgroundColor: isEditing ? '#f3f4f6' : isSelected ? '#f9fafb' : 'transparent',
+                  backgroundColor: isEditing ? 'var(--dt-bg-hover)' : isSelected ? 'var(--dt-bg-secondary)' : 'transparent',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                  e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)';
                   const btn = e.currentTarget.querySelector('.edit-btn') as HTMLElement;
                   if (btn) btn.style.opacity = '1';
                 }}
                 onMouseLeave={(e) => {
                   if (!isEditing) {
-                    e.currentTarget.style.backgroundColor = isSelected ? '#f9fafb' : 'transparent';
+                    e.currentTarget.style.backgroundColor = isSelected ? 'var(--dt-bg-secondary)' : 'transparent';
                   }
                   const btn = e.currentTarget.querySelector('.edit-btn') as HTMLElement;
                   if (btn && !isEditing) btn.style.opacity = '0';
@@ -335,7 +335,7 @@ export function MultiSelectCell({
                       background: 'none',
                       cursor: 'pointer',
                       opacity: isEditing ? '1' : '0',
-                      color: '#6b7280',
+                      color: 'var(--dt-text-secondary)',
                       fontSize: '14px',
                       transition: 'opacity 0.15s',
                     }}
@@ -354,14 +354,14 @@ export function MultiSelectCell({
               style={{
                 padding: '8px 12px',
                 cursor: 'pointer',
-                borderTop: '1px solid #e5e7eb',
+                borderTop: '1px solid var(--dt-border-color)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                color: '#2563eb',
+                color: 'var(--dt-accent-primary)',
                 fontSize: '13px',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f3f4f6')}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
             >
               <span>+</span>
@@ -382,15 +382,15 @@ export function MultiSelectCell({
             left: dropdownPos.left + 230,
             zIndex: 10000,
             width: '200px',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
+            backgroundColor: 'var(--dt-bg-primary)',
+            border: '1px solid var(--dt-border-color)',
             borderRadius: '6px',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            boxShadow: 'var(--dt-shadow-md)',
           }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Option name input */}
-          <div style={{ padding: '8px', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ padding: '8px', borderBottom: '1px solid var(--dt-border-color)' }}>
             <div
               style={{
                 display: 'flex',
@@ -434,11 +434,11 @@ export function MultiSelectCell({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                color: '#ef4444',
+                color: 'var(--dt-accent-danger)',
                 fontSize: '13px',
-                borderBottom: '1px solid #e5e7eb',
+                borderBottom: '1px solid var(--dt-border-color)',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#fef2f2')}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--dt-tag-red-bg)')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
             >
               <span>🗑</span>
@@ -449,7 +449,7 @@ export function MultiSelectCell({
           {/* Color picker */}
           {onUpdateOption && (
             <div style={{ padding: '8px' }}>
-              <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px', fontWeight: 500 }}>
+              <div style={{ fontSize: '11px', color: 'var(--dt-text-secondary)', marginBottom: '6px', fontWeight: 500 }}>
                 Colors
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -467,9 +467,9 @@ export function MultiSelectCell({
                         alignItems: 'center',
                         gap: '8px',
                         borderRadius: '4px',
-                        backgroundColor: isSelected ? '#f3f4f6' : 'transparent',
+                        backgroundColor: isSelected ? 'var(--dt-bg-hover)' : 'transparent',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f3f4f6')}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)')}
                       onMouseLeave={(e) => {
                         if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
                       }}
@@ -480,14 +480,13 @@ export function MultiSelectCell({
                           height: '14px',
                           borderRadius: '3px',
                           backgroundColor: colorStyles.bg,
-                          border: `1px solid ${colorStyles.text}20`,
                         }}
                       />
-                      <span style={{ fontSize: '13px', color: '#374151', textTransform: 'capitalize' }}>
+                      <span style={{ fontSize: '13px', color: 'var(--dt-text-primary)', textTransform: 'capitalize' }}>
                         {color}
                       </span>
                       {isSelected && (
-                        <span style={{ marginLeft: 'auto', color: '#2563eb' }}>✓</span>
+                        <span style={{ marginLeft: 'auto', color: 'var(--dt-accent-primary)' }}>✓</span>
                       )}
                     </div>
                   );

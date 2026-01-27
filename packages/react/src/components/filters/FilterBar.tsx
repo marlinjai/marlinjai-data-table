@@ -117,8 +117,8 @@ export function FilterBar({
         alignItems: 'center',
         gap: '8px',
         padding: '8px 12px',
-        backgroundColor: '#f9fafb',
-        borderBottom: '1px solid #e5e7eb',
+        backgroundColor: 'var(--dt-bg-secondary)',
+        borderBottom: '1px solid var(--dt-border-color)',
       }}
     >
       {filters.map((filter, index) => {
@@ -136,13 +136,13 @@ export function FilterBar({
               alignItems: 'center',
               gap: '4px',
               padding: '4px 8px',
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
+              backgroundColor: 'var(--dt-bg-primary)',
+              border: '1px solid var(--dt-border-color)',
               borderRadius: '4px',
               fontSize: '13px',
             }}
           >
-            <span style={{ color: '#6b7280' }}>{column.name}</span>
+            <span style={{ color: 'var(--dt-text-secondary)' }}>{column.name}</span>
 
             <select
               value={filter.operator}
@@ -153,7 +153,7 @@ export function FilterBar({
                 border: 'none',
                 background: 'none',
                 fontSize: '13px',
-                color: '#374151',
+                color: 'var(--dt-text-primary)',
                 cursor: 'pointer',
               }}
             >
@@ -180,7 +180,7 @@ export function FilterBar({
                 border: 'none',
                 background: 'none',
                 cursor: 'pointer',
-                color: '#9ca3af',
+                color: 'var(--dt-text-muted)',
                 fontSize: '14px',
                 lineHeight: 1,
               }}
@@ -202,9 +202,11 @@ export function FilterBar({
           onBlur={() => setIsAddingFilter(false)}
           style={{
             padding: '4px 8px',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--dt-border-color)',
             borderRadius: '4px',
             fontSize: '13px',
+            backgroundColor: 'var(--dt-bg-primary)',
+            color: 'var(--dt-text-primary)',
           }}
         >
           <option value="">Select column...</option>
@@ -219,12 +221,12 @@ export function FilterBar({
           onClick={() => setIsAddingFilter(true)}
           style={{
             padding: '4px 8px',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--dt-border-color)',
             borderRadius: '4px',
-            backgroundColor: 'white',
+            backgroundColor: 'var(--dt-bg-primary)',
             cursor: 'pointer',
             fontSize: '13px',
-            color: '#6b7280',
+            color: 'var(--dt-text-secondary)',
           }}
         >
           + Add filter
@@ -240,7 +242,7 @@ export function FilterBar({
             background: 'none',
             cursor: 'pointer',
             fontSize: '13px',
-            color: '#9ca3af',
+            color: 'var(--dt-text-muted)',
           }}
         >
           Clear all
@@ -266,9 +268,11 @@ function FilterValueInput({ column, value, onChange, selectOptions = [] }: Filte
           onChange={(e) => onChange(e.target.value === 'true')}
           style={{
             padding: '2px 4px',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--dt-border-color)',
             borderRadius: '2px',
             fontSize: '13px',
+            backgroundColor: 'var(--dt-bg-primary)',
+            color: 'var(--dt-text-primary)',
           }}
         >
           <option value="true">Yes</option>
@@ -284,10 +288,12 @@ function FilterValueInput({ column, value, onChange, selectOptions = [] }: Filte
           onChange={(e) => onChange(e.target.value || null)}
           style={{
             padding: '2px 4px',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--dt-border-color)',
             borderRadius: '2px',
             fontSize: '13px',
             maxWidth: '120px',
+            backgroundColor: 'var(--dt-bg-primary)',
+            color: 'var(--dt-text-primary)',
           }}
         >
           <option value="">Select...</option>
@@ -308,10 +314,12 @@ function FilterValueInput({ column, value, onChange, selectOptions = [] }: Filte
           placeholder="Value"
           style={{
             padding: '2px 4px',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--dt-border-color)',
             borderRadius: '2px',
             fontSize: '13px',
             width: '80px',
+            backgroundColor: 'var(--dt-bg-primary)',
+            color: 'var(--dt-text-primary)',
           }}
         />
       );
@@ -324,9 +332,11 @@ function FilterValueInput({ column, value, onChange, selectOptions = [] }: Filte
           onChange={(e) => onChange(e.target.value || null)}
           style={{
             padding: '2px 4px',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--dt-border-color)',
             borderRadius: '2px',
             fontSize: '13px',
+            backgroundColor: 'var(--dt-bg-primary)',
+            color: 'var(--dt-text-primary)',
           }}
         />
       );
@@ -340,10 +350,12 @@ function FilterValueInput({ column, value, onChange, selectOptions = [] }: Filte
           placeholder="Value"
           style={{
             padding: '2px 4px',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--dt-border-color)',
             borderRadius: '2px',
             fontSize: '13px',
             width: '100px',
+            backgroundColor: 'var(--dt-bg-primary)',
+            color: 'var(--dt-text-primary)',
           }}
         />
       );

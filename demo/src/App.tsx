@@ -62,9 +62,12 @@ class MockFileAdapter implements FileStorageAdapter {
 
 const fileAdapter = new MockFileAdapter();
 
+type ColorScheme = 'system' | 'light' | 'dark';
+
 function App() {
   const [isReady, setIsReady] = useState(false);
   const [tableId, setTableId] = useState<string | null>(null);
+  const [colorScheme, setColorScheme] = useState<ColorScheme>('system');
 
   // Initialize with sample data
   useEffect(() => {
@@ -76,9 +79,41 @@ function App() {
     init();
   }, []);
 
+  // Apply color scheme class to document root (html element)
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove('dark', 'light');
+    if (colorScheme === 'dark') {
+      root.classList.add('dark');
+    } else if (colorScheme === 'light') {
+      root.classList.add('light');
+    }
+    // 'system' = no class, follows OS preference
+  }, [colorScheme]);
+
+  const cycleColorScheme = () => {
+    setColorScheme((prev) => {
+      if (prev === 'system') return 'light';
+      if (prev === 'light') return 'dark';
+      return 'system';
+    });
+  };
+
+  const getSchemeIcon = () => {
+    if (colorScheme === 'system') return '💻';
+    if (colorScheme === 'light') return '☀️';
+    return '🌙';
+  };
+
+  const getSchemeLabel = () => {
+    if (colorScheme === 'system') return 'System';
+    if (colorScheme === 'light') return 'Light';
+    return 'Dark';
+  };
+
   if (!isReady || !tableId) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center' }}>
+      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--demo-text-secondary)' }}>
         Loading demo data...
       </div>
     );
@@ -87,13 +122,33 @@ function App() {
   return (
     <DataTableProvider dbAdapter={dbAdapter} fileAdapter={fileAdapter} workspaceId="demo-workspace">
       <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
-        <header style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 600, color: '#111' }}>
-            Data Table Demo
-          </h1>
-          <p style={{ color: '#666', marginTop: '8px' }}>
-            A Notion-like data table with custom properties, filtering, sorting, and inline editing.
-          </p>
+        <header style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--demo-text-primary)' }}>
+              Data Table Demo
+            </h1>
+            <p style={{ color: 'var(--demo-text-secondary)', marginTop: '8px' }}>
+              A Notion-like data table with custom properties, filtering, sorting, and inline editing.
+            </p>
+          </div>
+          <button
+            onClick={cycleColorScheme}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: 'var(--demo-button-bg)',
+              color: 'var(--demo-button-text)',
+              border: '1px solid var(--demo-button-border)',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              minWidth: '110px',
+            }}
+          >
+            {getSchemeIcon()} {getSchemeLabel()}
+          </button>
         </header>
 
         <ReceiptsTable tableId={tableId} />
@@ -291,7 +346,7 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
           <h2 style={{ fontSize: '20px', fontWeight: 600 }}>
             {table.icon} {table.name}
           </h2>
-          <p style={{ color: '#666', fontSize: '14px', marginTop: '4px' }}>
+          <p style={{ color: 'var(--demo-text-secondary)', fontSize: '14px', marginTop: '4px' }}>
             {total} {total === 1 ? 'item' : 'items'}
             {filters.length > 0 && ` (filtered)`}
             {' · '}{columns.length} properties
@@ -307,7 +362,7 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
               }}
               style={{
                 padding: '8px 16px',
-                backgroundColor: '#ef4444',
+                backgroundColor: 'var(--demo-button-danger)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
@@ -321,7 +376,8 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
               onClick={() => setSelectedRows(new Set())}
               style={{
                 padding: '8px 16px',
-                backgroundColor: '#e5e7eb',
+                backgroundColor: 'var(--demo-button-bg)',
+                color: 'var(--demo-button-text)',
                 border: 'none',
                 borderRadius: '6px',
                 cursor: 'pointer',
@@ -371,7 +427,7 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
       {/* Grouping Controls */}
       {(!currentView || currentView.type === 'table') && (
         <div style={{ marginBottom: '12px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <label style={{ fontSize: '14px', color: '#374151' }}>
+          <label style={{ fontSize: '14px', color: 'var(--demo-text-primary)' }}>
             Group by:
             <select
               value={groupConfig?.columnId || ''}
@@ -382,7 +438,14 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
                   setGroupConfig(undefined);
                 }
               }}
-              style={{ marginLeft: '8px', padding: '4px 8px', borderRadius: '4px', border: '1px solid #d1d5db' }}
+              style={{ 
+                marginLeft: '8px', 
+                padding: '4px 8px', 
+                borderRadius: '4px', 
+                border: '1px solid var(--demo-border)',
+                backgroundColor: 'var(--demo-card-bg)',
+                color: 'var(--demo-text-primary)'
+              }}
             >
               <option value="">None</option>
               {columns.filter(c => ['text', 'select', 'multi_select', 'boolean'].includes(c.type)).map((col) => (
@@ -390,7 +453,7 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
               ))}
             </select>
           </label>
-          <label style={{ fontSize: '14px', color: '#374151', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <label style={{ fontSize: '14px', color: 'var(--demo-text-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <input
               type="checkbox"
               checked={subItemsConfig.enabled}
@@ -401,7 +464,15 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
           {columnOrder && (
             <button
               onClick={() => setColumnOrder(undefined)}
-              style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontSize: '13px' }}
+              style={{ 
+                padding: '4px 8px', 
+                borderRadius: '4px', 
+                border: '1px solid var(--demo-border)', 
+                background: 'var(--demo-card-bg)', 
+                color: 'var(--demo-text-primary)',
+                cursor: 'pointer', 
+                fontSize: '13px' 
+              }}
             >
               Reset Column Order
             </button>
@@ -447,7 +518,7 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
           footerConfig={footerConfig}
           onFooterConfigChange={setFooterConfig}
           showFooter={true}
-          style={{ backgroundColor: 'white' }}
+          style={{ backgroundColor: 'var(--demo-card-bg)' }}
         />
       )}
 
@@ -483,10 +554,11 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
         style={{
           marginTop: '24px',
           padding: '16px',
-          backgroundColor: '#f0f9ff',
+          backgroundColor: 'var(--demo-info-bg)',
           borderRadius: '8px',
           fontSize: '14px',
-          color: '#0369a1',
+          color: 'var(--demo-info-text)',
+          border: `1px solid var(--demo-info-border)`,
         }}
       >
         <strong>Try it out:</strong>

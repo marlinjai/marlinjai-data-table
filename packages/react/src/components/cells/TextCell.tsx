@@ -85,7 +85,7 @@ export function TextCell({ value, onChange, config, readOnly }: TextCellProps) {
         minHeight: '24px',
       }}
     >
-      {value || <span style={{ color: '#999' }}>{config?.placeholder || ''}</span>}
+      {value || <span style={{ color: 'var(--dt-text-muted)' }}>{config?.placeholder || ''}</span>}
     </div>
   );
 }
