@@ -143,8 +143,8 @@ export function ViewSwitcher({
         alignItems: 'center',
         gap: '2px',
         padding: '8px 12px',
-        borderBottom: '1px solid #e5e7eb',
-        backgroundColor: '#f9fafb',
+        borderBottom: '1px solid var(--dt-border-color)',
+        backgroundColor: 'var(--dt-bg-secondary)',
         overflowX: 'auto',
         minHeight: '44px',
       }}
@@ -175,17 +175,17 @@ export function ViewSwitcher({
                 padding: '6px 10px',
                 border: 'none',
                 borderRadius: '4px',
-                backgroundColor: isActive ? 'white' : 'transparent',
-                boxShadow: isActive ? '0 1px 2px rgba(0, 0, 0, 0.05)' : 'none',
+                backgroundColor: isActive ? 'var(--dt-bg-primary)' : 'transparent',
+                boxShadow: isActive ? 'var(--dt-shadow-sm)' : 'none',
                 cursor: 'pointer',
                 fontSize: '13px',
-                color: isActive ? '#111827' : '#6b7280',
+                color: isActive ? 'var(--dt-text-primary)' : 'var(--dt-text-secondary)',
                 fontWeight: isActive ? 500 : 400,
                 whiteSpace: 'nowrap',
               }}
               onMouseEnter={(e) => {
                 if (!isActive) {
-                  e.currentTarget.style.backgroundColor = '#e5e7eb';
+                  e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)';
                 }
               }}
               onMouseLeave={(e) => {
@@ -198,7 +198,7 @@ export function ViewSwitcher({
                 style={{
                   fontSize: '11px',
                   fontWeight: 600,
-                  color: isActive ? '#2563eb' : '#9ca3af',
+                  color: isActive ? 'var(--dt-accent-primary)' : 'var(--dt-text-muted)',
                 }}
               >
                 {VIEW_TYPE_ICONS[view.type]}
@@ -215,10 +215,12 @@ export function ViewSwitcher({
                   style={{
                     width: '80px',
                     padding: '2px 4px',
-                    border: '1px solid #2563eb',
+                    border: '1px solid var(--dt-accent-primary)',
                     borderRadius: '2px',
                     fontSize: '13px',
                     outline: 'none',
+                    backgroundColor: 'var(--dt-bg-primary)',
+                    color: 'var(--dt-text-primary)',
                   }}
                 />
               ) : (
@@ -252,10 +254,10 @@ export function ViewSwitcher({
                   top: '100%',
                   left: 0,
                   marginTop: '4px',
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: 'var(--dt-bg-primary)',
+                  border: '1px solid var(--dt-border-color)',
                   borderRadius: '6px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  boxShadow: 'var(--dt-shadow-md)',
                   zIndex: 100,
                   minWidth: '140px',
                   padding: '4px 0',
@@ -272,10 +274,10 @@ export function ViewSwitcher({
                     backgroundColor: 'transparent',
                     cursor: 'pointer',
                     fontSize: '13px',
-                    color: '#374151',
+                    color: 'var(--dt-text-primary)',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = 'transparent';
@@ -295,10 +297,10 @@ export function ViewSwitcher({
                       backgroundColor: 'transparent',
                       cursor: 'pointer',
                       fontSize: '13px',
-                      color: '#ef4444',
+                      color: 'var(--dt-accent-danger)',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#fef2f2';
+                      e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = 'transparent';
@@ -328,10 +330,10 @@ export function ViewSwitcher({
             backgroundColor: 'transparent',
             cursor: 'pointer',
             fontSize: '16px',
-            color: '#6b7280',
+            color: 'var(--dt-text-secondary)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#e5e7eb';
+            e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = 'transparent';
@@ -348,10 +350,10 @@ export function ViewSwitcher({
               top: '100%',
               left: 0,
               marginTop: '4px',
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
+              backgroundColor: 'var(--dt-bg-primary)',
+              border: '1px solid var(--dt-border-color)',
               borderRadius: '6px',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              boxShadow: 'var(--dt-shadow-md)',
               zIndex: 100,
               minWidth: '160px',
               padding: '4px 0',
@@ -372,10 +374,10 @@ export function ViewSwitcher({
                   backgroundColor: 'transparent',
                   cursor: 'pointer',
                   fontSize: '13px',
-                  color: '#374151',
+                  color: 'var(--dt-text-primary)',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                  e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
@@ -387,7 +389,7 @@ export function ViewSwitcher({
                     textAlign: 'center',
                     fontSize: '11px',
                     fontWeight: 600,
-                    color: '#9ca3af',
+                    color: 'var(--dt-text-muted)',
                   }}
                 >
                   {VIEW_TYPE_ICONS[type]}

@@ -24,21 +24,21 @@ export interface BoardColumnProps {
   onAddCard?: (groupValue: string | null) => void;
 }
 
-const DEFAULT_COLORS: Record<string, { bg: string; text: string }> = {
-  gray: { bg: '#e5e7eb', text: '#374151' },
-  red: { bg: '#fee2e2', text: '#991b1b' },
-  orange: { bg: '#ffedd5', text: '#9a3412' },
-  yellow: { bg: '#fef3c7', text: '#92400e' },
-  green: { bg: '#dcfce7', text: '#166534' },
-  blue: { bg: '#dbeafe', text: '#1e40af' },
-  purple: { bg: '#f3e8ff', text: '#6b21a8' },
-  pink: { bg: '#fce7f3', text: '#9d174d' },
-  brown: { bg: '#fae5d3', text: '#7c4a03' },
+const TAG_COLORS: Record<string, { bg: string; text: string }> = {
+  gray: { bg: 'var(--dt-tag-gray-bg)', text: 'var(--dt-tag-gray-text)' },
+  red: { bg: 'var(--dt-tag-red-bg)', text: 'var(--dt-tag-red-text)' },
+  orange: { bg: 'var(--dt-tag-orange-bg)', text: 'var(--dt-tag-orange-text)' },
+  yellow: { bg: 'var(--dt-tag-yellow-bg)', text: 'var(--dt-tag-yellow-text)' },
+  green: { bg: 'var(--dt-tag-green-bg)', text: 'var(--dt-tag-green-text)' },
+  blue: { bg: 'var(--dt-tag-blue-bg)', text: 'var(--dt-tag-blue-text)' },
+  purple: { bg: 'var(--dt-tag-purple-bg)', text: 'var(--dt-tag-purple-text)' },
+  pink: { bg: 'var(--dt-tag-pink-bg)', text: 'var(--dt-tag-pink-text)' },
+  brown: { bg: 'var(--dt-tag-brown-bg)', text: 'var(--dt-tag-brown-text)' },
 };
 
 function getColorStyles(color?: string): { bg: string; text: string } {
-  if (!color) return DEFAULT_COLORS.gray;
-  return DEFAULT_COLORS[color] ?? DEFAULT_COLORS.gray;
+  if (!color) return TAG_COLORS.gray;
+  return TAG_COLORS[color] ?? TAG_COLORS.gray;
 }
 
 export function BoardColumn({
@@ -96,7 +96,7 @@ export function BoardColumn({
     onAddCard?.(groupValue);
   }, [onAddCard, groupValue]);
 
-  const colors = groupOption ? getColorStyles(groupOption.color) : DEFAULT_COLORS.gray;
+  const colors = groupOption ? getColorStyles(groupOption.color) : TAG_COLORS.gray;
   const title = groupOption?.name ?? 'No Status';
 
   return (
@@ -111,9 +111,9 @@ export function BoardColumn({
         width: '280px',
         minWidth: '280px',
         maxHeight: '100%',
-        backgroundColor: isDragOver ? '#f0f9ff' : '#f3f4f6',
+        backgroundColor: isDragOver ? 'var(--dt-bg-selected)' : 'var(--dt-bg-tertiary)',
         borderRadius: '8px',
-        border: isDragOver ? '2px dashed #2563eb' : '2px solid transparent',
+        border: isDragOver ? '2px dashed var(--dt-accent-primary)' : '2px solid transparent',
         transition: 'background-color 0.15s, border-color 0.15s',
       }}
     >
@@ -124,7 +124,7 @@ export function BoardColumn({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '12px',
-          borderBottom: '1px solid #e5e7eb',
+          borderBottom: '1px solid var(--dt-border-color)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -147,7 +147,7 @@ export function BoardColumn({
               style={{
                 fontSize: '13px',
                 fontWeight: 500,
-                color: '#6b7280',
+                color: 'var(--dt-text-secondary)',
               }}
             >
               {title}
@@ -156,7 +156,7 @@ export function BoardColumn({
           <span
             style={{
               fontSize: '12px',
-              color: '#9ca3af',
+              color: 'var(--dt-text-muted)',
               fontWeight: 400,
             }}
           >
@@ -197,7 +197,7 @@ export function BoardColumn({
             style={{
               padding: '16px',
               textAlign: 'center',
-              color: '#9ca3af',
+              color: 'var(--dt-text-muted)',
               fontSize: '13px',
             }}
           >
@@ -211,10 +211,10 @@ export function BoardColumn({
             style={{
               padding: '12px',
               borderRadius: '6px',
-              border: '2px dashed #2563eb',
-              backgroundColor: '#dbeafe',
+              border: '2px dashed var(--dt-accent-primary)',
+              backgroundColor: 'var(--dt-bg-selected)',
               textAlign: 'center',
-              color: '#2563eb',
+              color: 'var(--dt-accent-primary)',
               fontSize: '13px',
             }}
           >
@@ -228,7 +228,7 @@ export function BoardColumn({
         <div
           style={{
             padding: '8px 12px',
-            borderTop: '1px solid #e5e7eb',
+            borderTop: '1px solid var(--dt-border-color)',
           }}
         >
           <button
@@ -241,14 +241,14 @@ export function BoardColumn({
               backgroundColor: 'transparent',
               cursor: 'pointer',
               fontSize: '13px',
-              color: '#6b7280',
+              color: 'var(--dt-text-secondary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '4px',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#e5e7eb';
+              e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = 'transparent';

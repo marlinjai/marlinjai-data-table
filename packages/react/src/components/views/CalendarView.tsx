@@ -245,8 +245,8 @@ export function CalendarView({
           alignItems: 'center',
           justifyContent: 'center',
           padding: '48px',
-          color: '#6b7280',
-          border: '1px solid #e5e7eb',
+          color: 'var(--dt-text-secondary)',
+          border: '1px solid var(--dt-border-color)',
           borderRadius: '8px',
           ...style,
         }}
@@ -265,7 +265,7 @@ export function CalendarView({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--dt-border-color)',
         borderRadius: '8px',
         overflow: 'hidden',
         ...style,
@@ -278,8 +278,8 @@ export function CalendarView({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '12px 16px',
-          backgroundColor: '#f9fafb',
-          borderBottom: '1px solid #e5e7eb',
+          backgroundColor: 'var(--dt-bg-secondary)',
+          borderBottom: '1px solid var(--dt-border-color)',
         }}
       >
         {/* Navigation buttons */}
@@ -292,18 +292,18 @@ export function CalendarView({
               justifyContent: 'center',
               width: '32px',
               height: '32px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--dt-border-color)',
               borderRadius: '6px',
-              backgroundColor: 'white',
+              backgroundColor: 'var(--dt-bg-primary)',
               cursor: 'pointer',
               fontSize: '14px',
-              color: '#374151',
+              color: 'var(--dt-text-primary)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f3f4f6';
+              e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'white';
+              e.currentTarget.style.backgroundColor = 'var(--dt-bg-primary)';
             }}
           >
             &lt;
@@ -316,18 +316,18 @@ export function CalendarView({
               justifyContent: 'center',
               width: '32px',
               height: '32px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--dt-border-color)',
               borderRadius: '6px',
-              backgroundColor: 'white',
+              backgroundColor: 'var(--dt-bg-primary)',
               cursor: 'pointer',
               fontSize: '14px',
-              color: '#374151',
+              color: 'var(--dt-text-primary)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f3f4f6';
+              e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'white';
+              e.currentTarget.style.backgroundColor = 'var(--dt-bg-primary)';
             }}
           >
             &gt;
@@ -336,19 +336,19 @@ export function CalendarView({
             onClick={handleToday}
             style={{
               padding: '6px 12px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--dt-border-color)',
               borderRadius: '6px',
-              backgroundColor: 'white',
+              backgroundColor: 'var(--dt-bg-primary)',
               cursor: 'pointer',
               fontSize: '13px',
-              color: '#374151',
+              color: 'var(--dt-text-primary)',
               fontWeight: 500,
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f3f4f6';
+              e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'white';
+              e.currentTarget.style.backgroundColor = 'var(--dt-bg-primary)';
             }}
           >
             Today
@@ -360,7 +360,7 @@ export function CalendarView({
           style={{
             fontSize: '16px',
             fontWeight: 600,
-            color: '#111827',
+            color: 'var(--dt-text-primary)',
           }}
         >
           {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
@@ -375,8 +375,8 @@ export function CalendarView({
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(7, 1fr)',
-          backgroundColor: '#f9fafb',
-          borderBottom: '1px solid #e5e7eb',
+          backgroundColor: 'var(--dt-bg-secondary)',
+          borderBottom: '1px solid var(--dt-border-color)',
         }}
       >
         {DAYS_OF_WEEK.map((day) => (
@@ -387,7 +387,7 @@ export function CalendarView({
               textAlign: 'center',
               fontSize: '12px',
               fontWeight: 600,
-              color: '#6b7280',
+              color: 'var(--dt-text-secondary)',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
             }}
@@ -405,7 +405,7 @@ export function CalendarView({
             alignItems: 'center',
             justifyContent: 'center',
             padding: '48px',
-            color: '#9ca3af',
+            color: 'var(--dt-text-muted)',
           }}
         >
           Loading...
@@ -415,7 +415,7 @@ export function CalendarView({
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(7, 1fr)',
-            backgroundColor: 'white',
+            backgroundColor: 'var(--dt-bg-primary)',
           }}
         >
           {calendarDays.map((date, index) => {
@@ -448,10 +448,10 @@ export function CalendarView({
           justifyContent: 'space-between',
           alignItems: 'center',
           padding: '8px 16px',
-          backgroundColor: '#f9fafb',
-          borderTop: '1px solid #e5e7eb',
+          backgroundColor: 'var(--dt-bg-secondary)',
+          borderTop: '1px solid var(--dt-border-color)',
           fontSize: '13px',
-          color: '#6b7280',
+          color: 'var(--dt-text-secondary)',
         }}
       >
         <span>

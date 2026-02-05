@@ -253,7 +253,7 @@ export function BoardView({
         style={{
           padding: '32px',
           textAlign: 'center',
-          color: '#9ca3af',
+          color: 'var(--dt-text-muted)',
           ...style,
         }}
       >
@@ -275,7 +275,7 @@ export function BoardView({
         style={{
           padding: '32px',
           textAlign: 'center',
-          color: '#9ca3af',
+          color: 'var(--dt-text-muted)',
           ...style,
         }}
       >
@@ -300,7 +300,7 @@ export function BoardView({
         padding: '16px',
         overflowX: 'auto',
         minHeight: '400px',
-        backgroundColor: '#fafafa',
+        backgroundColor: 'var(--dt-bg-secondary)',
         ...style,
       }}
     >
@@ -308,7 +308,7 @@ export function BoardView({
       <style>{`
         .dt-board-view {
           scrollbar-width: thin;
-          scrollbar-color: #d1d5db transparent;
+          scrollbar-color: var(--dt-border-color-strong) transparent;
         }
         .dt-board-view::-webkit-scrollbar {
           height: 8px;
@@ -317,12 +317,12 @@ export function BoardView({
           background: transparent;
         }
         .dt-board-view::-webkit-scrollbar-thumb {
-          background-color: #d1d5db;
+          background-color: var(--dt-border-color-strong);
           border-radius: 4px;
         }
         .dt-board-column-cards {
           scrollbar-width: thin;
-          scrollbar-color: #d1d5db transparent;
+          scrollbar-color: var(--dt-border-color-strong) transparent;
         }
         .dt-board-column-cards::-webkit-scrollbar {
           width: 6px;
@@ -331,7 +331,7 @@ export function BoardView({
           background: transparent;
         }
         .dt-board-column-cards::-webkit-scrollbar-thumb {
-          background-color: #d1d5db;
+          background-color: var(--dt-border-color-strong);
           border-radius: 3px;
         }
       `}</style>
@@ -345,14 +345,15 @@ export function BoardView({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(255, 255, 255, 0.7)',
+            backgroundColor: 'var(--dt-bg-primary)',
+            opacity: 0.7,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 10,
           }}
         >
-          <span style={{ color: '#6b7280', fontSize: '14px' }}>Loading...</span>
+          <span style={{ color: 'var(--dt-text-secondary)', fontSize: '14px' }}>Loading...</span>
         </div>
       )}
 
@@ -387,7 +388,7 @@ export function BoardView({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#9ca3af',
+            color: 'var(--dt-text-muted)',
             fontSize: '14px',
           }}
         >

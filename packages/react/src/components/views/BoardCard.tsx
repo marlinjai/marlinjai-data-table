@@ -14,21 +14,21 @@ export interface BoardCardProps {
   onDragEnd?: (e: React.DragEvent) => void;
 }
 
-const DEFAULT_COLORS: Record<string, { bg: string; text: string }> = {
-  gray: { bg: '#e5e7eb', text: '#374151' },
-  red: { bg: '#fee2e2', text: '#991b1b' },
-  orange: { bg: '#ffedd5', text: '#9a3412' },
-  yellow: { bg: '#fef3c7', text: '#92400e' },
-  green: { bg: '#dcfce7', text: '#166534' },
-  blue: { bg: '#dbeafe', text: '#1e40af' },
-  purple: { bg: '#f3e8ff', text: '#6b21a8' },
-  pink: { bg: '#fce7f3', text: '#9d174d' },
-  brown: { bg: '#fae5d3', text: '#7c4a03' },
+const TAG_COLORS: Record<string, { bg: string; text: string }> = {
+  gray: { bg: 'var(--dt-tag-gray-bg)', text: 'var(--dt-tag-gray-text)' },
+  red: { bg: 'var(--dt-tag-red-bg)', text: 'var(--dt-tag-red-text)' },
+  orange: { bg: 'var(--dt-tag-orange-bg)', text: 'var(--dt-tag-orange-text)' },
+  yellow: { bg: 'var(--dt-tag-yellow-bg)', text: 'var(--dt-tag-yellow-text)' },
+  green: { bg: 'var(--dt-tag-green-bg)', text: 'var(--dt-tag-green-text)' },
+  blue: { bg: 'var(--dt-tag-blue-bg)', text: 'var(--dt-tag-blue-text)' },
+  purple: { bg: 'var(--dt-tag-purple-bg)', text: 'var(--dt-tag-purple-text)' },
+  pink: { bg: 'var(--dt-tag-pink-bg)', text: 'var(--dt-tag-pink-text)' },
+  brown: { bg: 'var(--dt-tag-brown-bg)', text: 'var(--dt-tag-brown-text)' },
 };
 
 function getColorStyles(color?: string): { bg: string; text: string } {
-  if (!color) return DEFAULT_COLORS.gray;
-  return DEFAULT_COLORS[color] ?? DEFAULT_COLORS.gray;
+  if (!color) return TAG_COLORS.gray;
+  return TAG_COLORS[color] ?? TAG_COLORS.gray;
 }
 
 function formatCellValue(value: CellValue, column: Column): string {
@@ -111,12 +111,12 @@ export function BoardCard({
       onClick={handleClick}
       style={{
         padding: '12px',
-        backgroundColor: 'white',
+        backgroundColor: 'var(--dt-bg-primary)',
         borderRadius: '6px',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--dt-border-color)',
         boxShadow: isDragging
-          ? '0 8px 16px -2px rgba(0, 0, 0, 0.15)'
-          : '0 1px 2px rgba(0, 0, 0, 0.05)',
+          ? 'var(--dt-shadow-lg)'
+          : 'var(--dt-shadow-sm)',
         cursor: onDragStart ? 'grab' : onClick ? 'pointer' : 'default',
         opacity: isDragging ? 0.9 : 1,
         transform: isDragging ? 'rotate(3deg)' : 'none',
@@ -125,12 +125,12 @@ export function BoardCard({
       }}
       onMouseEnter={(e) => {
         if (!isDragging) {
-          e.currentTarget.style.boxShadow = '0 4px 8px -2px rgba(0, 0, 0, 0.1)';
+          e.currentTarget.style.boxShadow = 'var(--dt-shadow-md)';
         }
       }}
       onMouseLeave={(e) => {
         if (!isDragging) {
-          e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+          e.currentTarget.style.boxShadow = 'var(--dt-shadow-sm)';
         }
       }}
     >
@@ -139,7 +139,7 @@ export function BoardCard({
         style={{
           fontSize: '14px',
           fontWeight: 500,
-          color: '#111827',
+          color: 'var(--dt-text-primary)',
           marginBottom: displayColumns.length > 0 ? '8px' : 0,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -166,7 +166,7 @@ export function BoardCard({
                     <span
                       style={{
                         fontSize: '11px',
-                        color: '#6b7280',
+                        color: 'var(--dt-text-secondary)',
                         flexShrink: 0,
                       }}
                     >
@@ -199,7 +199,7 @@ export function BoardCard({
                   <span
                     style={{
                       fontSize: '11px',
-                      color: '#6b7280',
+                      color: 'var(--dt-text-secondary)',
                       flexShrink: 0,
                       paddingTop: '2px',
                     }}
@@ -244,10 +244,10 @@ export function BoardCard({
                   fontSize: '12px',
                 }}
               >
-                <span style={{ color: '#6b7280', flexShrink: 0 }}>{column.name}:</span>
+                <span style={{ color: 'var(--dt-text-secondary)', flexShrink: 0 }}>{column.name}:</span>
                 <span
                   style={{
-                    color: '#374151',
+                    color: 'var(--dt-text-primary)',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',

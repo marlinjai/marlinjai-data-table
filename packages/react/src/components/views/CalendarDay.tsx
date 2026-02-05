@@ -29,7 +29,7 @@ function getEventStyle(event: CalendarEvent): React.CSSProperties {
     borderRadius: '3px',
     fontSize: '11px',
     color: 'white',
-    backgroundColor: '#2563eb',
+    backgroundColor: 'var(--dt-accent-primary)',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
@@ -100,21 +100,21 @@ export function CalendarDay({
       style={{
         minHeight: '100px',
         padding: '4px',
-        borderRight: '1px solid #e5e7eb',
-        borderBottom: '1px solid #e5e7eb',
-        backgroundColor: isSelected ? '#eff6ff' : isCurrentMonth ? 'white' : '#f9fafb',
+        borderRight: '1px solid var(--dt-border-color)',
+        borderBottom: '1px solid var(--dt-border-color)',
+        backgroundColor: isSelected ? 'var(--dt-bg-selected)' : isCurrentMonth ? 'var(--dt-bg-primary)' : 'var(--dt-bg-secondary)',
         cursor: 'pointer',
         transition: 'background-color 0.15s ease',
         overflow: 'hidden',
       }}
       onMouseEnter={(e) => {
         if (!isSelected) {
-          e.currentTarget.style.backgroundColor = isCurrentMonth ? '#f3f4f6' : '#f3f4f6';
+          e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)';
         }
       }}
       onMouseLeave={(e) => {
         if (!isSelected) {
-          e.currentTarget.style.backgroundColor = isCurrentMonth ? 'white' : '#f9fafb';
+          e.currentTarget.style.backgroundColor = isCurrentMonth ? 'var(--dt-bg-primary)' : 'var(--dt-bg-secondary)';
         }
       }}
     >
@@ -134,8 +134,8 @@ export function CalendarDay({
             width: isToday ? '24px' : 'auto',
             height: isToday ? '24px' : 'auto',
             borderRadius: isToday ? '50%' : '0',
-            backgroundColor: isToday ? '#2563eb' : 'transparent',
-            color: isToday ? 'white' : isCurrentMonth ? '#374151' : '#9ca3af',
+            backgroundColor: isToday ? 'var(--dt-accent-primary)' : 'transparent',
+            color: isToday ? 'white' : isCurrentMonth ? 'var(--dt-text-primary)' : 'var(--dt-text-muted)',
             fontSize: '12px',
             fontWeight: isToday ? 600 : 400,
           }}
@@ -152,10 +152,10 @@ export function CalendarDay({
             onClick={(e) => handleEventClick(e, event.row)}
             style={getEventStyle(event)}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#1d4ed8';
+              e.currentTarget.style.backgroundColor = 'var(--dt-accent-primary-hover)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#2563eb';
+              e.currentTarget.style.backgroundColor = 'var(--dt-accent-primary)';
             }}
             title={event.title}
           >
@@ -170,7 +170,7 @@ export function CalendarDay({
             style={{
               padding: '2px 6px',
               fontSize: '11px',
-              color: '#6b7280',
+              color: 'var(--dt-text-secondary)',
               fontWeight: 500,
             }}
           >
