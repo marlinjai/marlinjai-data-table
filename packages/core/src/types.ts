@@ -23,6 +23,23 @@ export type ColumnType =
   | 'last_edited_time';
 
 // =============================================================================
+// Alignment & Border Types
+// =============================================================================
+
+export type TextAlignment = 'left' | 'center' | 'right';
+
+export type BorderStyle = 'none' | 'rows' | 'columns' | 'both';
+
+export interface BorderConfig {
+  /** Which internal borders to show. Default: 'both' */
+  style?: BorderStyle;
+  /** Show outer table border. Default: true */
+  showOuterBorder?: boolean;
+  /** Custom border color. Default: 'var(--dt-border-color)' */
+  borderColor?: string;
+}
+
+// =============================================================================
 // Column Configuration Types
 // =============================================================================
 
@@ -145,6 +162,7 @@ export interface Column {
   width: number;
   isPrimary: boolean;
   config?: ColumnConfig;
+  alignment?: TextAlignment;
   createdAt: Date;
 }
 
@@ -384,6 +402,10 @@ export interface BoardViewConfig {
   groupByColumnId: string; // must be select/multi_select
   showEmptyGroups?: boolean;
   cardProperties?: string[]; // columnIds to show on cards
+  cardOrder?: Record<string, string[]>; // groupValue -> [rowId, rowId, ...] for manual ordering
+  collapsedGroups?: string[]; // Group values that are collapsed
+  hiddenGroups?: string[]; // Group values that are hidden
+  groupSortOrder?: Record<string, 'manual' | 'alphabetical' | 'date'>; // Per-group card sorting
 }
 
 export interface CalendarViewConfig {
