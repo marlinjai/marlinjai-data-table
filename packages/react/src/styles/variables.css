@@ -103,16 +103,16 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    /* Backgrounds */
-    --dt-bg-primary: #1f2937;
-    --dt-bg-secondary: #111827;
-    --dt-bg-tertiary: #374151;
-    --dt-bg-hover: #374151;
-    --dt-bg-selected: #1e3a5f;
+    /* Backgrounds - pure neutral grays */
+    --dt-bg-primary: #262626;
+    --dt-bg-secondary: #171717;
+    --dt-bg-tertiary: #404040;
+    --dt-bg-hover: #404040;
+    --dt-bg-selected: #3a3a3a;
 
     /* Borders */
-    --dt-border-color: #374151;
-    --dt-border-color-strong: #4b5563;
+    --dt-border-color: #404040;
+    --dt-border-color-strong: #525252;
 
     /* Text */
     --dt-text-primary: #f9fafb;
@@ -151,16 +151,16 @@
 
 .dark,
 [data-theme="dark"] {
-  /* Backgrounds */
-  --dt-bg-primary: #1f2937;
-  --dt-bg-secondary: #111827;
-  --dt-bg-tertiary: #374151;
-  --dt-bg-hover: #374151;
-  --dt-bg-selected: #1e3a5f;
+  /* Backgrounds - pure neutral grays */
+  --dt-bg-primary: #262626;
+  --dt-bg-secondary: #171717;
+  --dt-bg-tertiary: #404040;
+  --dt-bg-hover: #404040;
+  --dt-bg-selected: #3a3a3a;
 
   /* Borders */
-  --dt-border-color: #374151;
-  --dt-border-color-strong: #4b5563;
+  --dt-border-color: #404040;
+  --dt-border-color-strong: #525252;
 
   /* Text */
   --dt-text-primary: #f9fafb;

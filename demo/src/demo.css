@@ -23,20 +23,20 @@
 /* Dark mode (auto via system preference) */
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --demo-bg: #0f172a;
-    --demo-text-primary: #f1f5f9;
-    --demo-text-secondary: #94a3b8;
-    --demo-border: #334155;
-    --demo-card-bg: #1e293b;
-    --demo-info-bg: #1e3a5f;
-    --demo-info-text: #93c5fd;
-    --demo-info-border: #1e40af;
-    --demo-button-bg: #334155;
-    --demo-button-text: #f1f5f9;
-    --demo-button-border: #475569;
-    --demo-button-bg-active: #f1f5f9;
-    --demo-button-text-active: #0f172a;
-    --demo-button-border-active: #cbd5e1;
+    --demo-bg: #171717;
+    --demo-text-primary: #fafafa;
+    --demo-text-secondary: #a3a3a3;
+    --demo-border: #404040;
+    --demo-card-bg: #262626;
+    --demo-info-bg: #333333;
+    --demo-info-text: #d4d4d4;
+    --demo-info-border: #525252;
+    --demo-button-bg: #404040;
+    --demo-button-text: #fafafa;
+    --demo-button-border: #525252;
+    --demo-button-bg-active: #fafafa;
+    --demo-button-text-active: #171717;
+    --demo-button-border-active: #d4d4d4;
     --demo-button-danger: #f87171;
     --demo-button-danger-bg: #450a0a;
   }
@@ -44,20 +44,20 @@
 
 /* Dark mode (manual via class) */
 .dark {
-  --demo-bg: #0f172a;
-  --demo-text-primary: #f1f5f9;
-  --demo-text-secondary: #94a3b8;
-  --demo-border: #334155;
-  --demo-card-bg: #1e293b;
-  --demo-info-bg: #1e3a5f;
-  --demo-info-text: #93c5fd;
-  --demo-info-border: #1e40af;
-  --demo-button-bg: #334155;
-  --demo-button-text: #f1f5f9;
-  --demo-button-border: #475569;
-  --demo-button-bg-active: #f1f5f9;
-  --demo-button-text-active: #0f172a;
-  --demo-button-border-active: #cbd5e1;
+  --demo-bg: #171717;
+  --demo-text-primary: #fafafa;
+  --demo-text-secondary: #a3a3a3;
+  --demo-border: #404040;
+  --demo-card-bg: #262626;
+  --demo-info-bg: #333333;
+  --demo-info-text: #d4d4d4;
+  --demo-info-border: #525252;
+  --demo-button-bg: #404040;
+  --demo-button-text: #fafafa;
+  --demo-button-border: #525252;
+  --demo-button-bg-active: #fafafa;
+  --demo-button-text-active: #171717;
+  --demo-button-border-active: #d4d4d4;
   --demo-button-danger: #f87171;
   --demo-button-danger-bg: #450a0a;
 }
