@@ -4,3 +4,5 @@ export { CalendarDay, type CalendarDayProps, type CalendarEvent } from './Calend
 export { BoardView, type BoardViewProps } from './BoardView';
 export { BoardColumn, type BoardColumnProps } from './BoardColumn';
 export { BoardCard, type BoardCardProps } from './BoardCard';
+export { BoardColumnMenu, type BoardColumnMenuProps, type BoardColumnSortOrder } from './BoardColumnMenu';
+export { RowDetailPanel, type RowDetailPanelProps } from './RowDetailPanel';

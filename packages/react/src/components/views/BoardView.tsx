@@ -8,6 +8,8 @@ import type {
   FileReference,
 } from '@marlinjai/data-table-core';
 import { BoardColumn } from './BoardColumn';
+import { RowDetailPanel } from './RowDetailPanel';
+import type { BoardColumnSortOrder } from './BoardColumnMenu';
 
 export interface BoardViewProps {
   columns: Column[];
@@ -16,6 +18,7 @@ export interface BoardViewProps {
 
   // Board configuration
   config: BoardViewConfig;
+  onConfigChange?: (config: BoardViewConfig) => void;
 
   // Cell editing (for drag-and-drop updates)
   onCellChange?: (rowId: string, columnId: string, value: CellValue) => void;
@@ -25,8 +28,9 @@ export interface BoardViewProps {
   onAddRow?: (initialCellValues?: Record<string, CellValue>) => void;
   onDeleteRow?: (rowId: string) => void;
 
-  // Card click
+  // Card click - if not provided, built-in detail panel will be used
   onCardClick?: (rowId: string) => void;
+  useBuiltInDetailPanel?: boolean;
 
   // Select option management
   onCreateSelectOption?: (columnId: string, name: string, color?: string) => Promise<SelectOption>;
@@ -36,6 +40,10 @@ export interface BoardViewProps {
   // File operations
   onUploadFile?: (rowId: string, columnId: string, file: File) => Promise<FileReference>;
   onDeleteFile?: (rowId: string, columnId: string, fileId: string) => Promise<void>;
+
+  // Relation operations
+  onSearchRelationRows?: (tableId: string, query: string) => Promise<Row[]>;
+  onGetRelationRowTitle?: (tableId: string, rowId: string) => Promise<string>;
 
   // Loading states
   isLoading?: boolean;
@@ -56,23 +64,32 @@ export function BoardView({
   rows,
   selectOptions = new Map(),
   config,
+  onConfigChange,
   onCellChange,
   readOnly = false,
   onAddRow,
   onDeleteRow,
   onCardClick,
+  useBuiltInDetailPanel = true,
   onCreateSelectOption,
   onUpdateSelectOption,
   onDeleteSelectOption,
   onUploadFile,
   onDeleteFile,
+  onSearchRelationRows,
+  onGetRelationRowTitle,
   isLoading,
   className,
   style,
 }: BoardViewProps) {
   const [draggingRowId, setDraggingRowId] = useState<string | null>(null);
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [isAddingColumn, setIsAddingColumn] = useState(false);
+  const [newColumnName, setNewColumnName] = useState('');
+  const [isCreatingColumn, setIsCreatingColumn] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const addColumnInputRef = useRef<HTMLInputElement>(null);
 
   // Get the grouping column
   const groupByColumn = useMemo(
@@ -84,6 +101,43 @@ export function BoardView({
   const groupOptions = useMemo(
     () => selectOptions.get(config.groupByColumnId) ?? [],
     [selectOptions, config.groupByColumnId]
+  );
+
+  // Sort rows within a group based on config
+  const sortRowsInGroup = useCallback(
+    (groupRows: Row[], groupValue: string | null): Row[] => {
+      const groupKey = groupValue ?? '__no_status__';
+      const sortOrder = config.groupSortOrder?.[groupKey] ?? 'manual';
+      const cardOrder = config.cardOrder?.[groupKey];
+
+      if (sortOrder === 'manual' && cardOrder) {
+        // Sort by card order
+        const orderMap = new Map(cardOrder.map((id, index) => [id, index]));
+        return [...groupRows].sort((a, b) => {
+          const aIndex = orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+          const bIndex = orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+          return aIndex - bIndex;
+        });
+      } else if (sortOrder === 'alphabetical') {
+        const primaryColumn = columns.find((col) => col.isPrimary);
+        if (primaryColumn) {
+          return [...groupRows].sort((a, b) => {
+            const aVal = String(a.cells[primaryColumn.id] ?? '');
+            const bVal = String(b.cells[primaryColumn.id] ?? '');
+            return aVal.localeCompare(bVal);
+          });
+        }
+      } else if (sortOrder === 'date') {
+        return [...groupRows].sort((a, b) => {
+          const aDate = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+          const bDate = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+          return bDate.getTime() - aDate.getTime(); // Newest first
+        });
+      }
+
+      return groupRows;
+    },
+    [config.groupSortOrder, config.cardOrder, columns]
   );
 
   // Group rows by the select column value
@@ -128,27 +182,33 @@ export function BoardView({
 
     // Add groups in option order
     groupOptions.forEach((option) => {
+      // Skip hidden groups
+      if (config.hiddenGroups?.includes(option.id)) return;
+
       const groupRows = groups.get(option.id);
       if (groupRows !== undefined && (groupRows.length > 0 || config.showEmptyGroups)) {
         result.push({
           groupValue: option.id,
           option,
-          rows: groupRows,
+          rows: sortRowsInGroup(groupRows, option.id),
         });
       }
     });
 
     // Add "No Status" group at the end (or beginning - UX decision)
-    const noStatusRows = groups.get(null) ?? [];
-    if (noStatusRows.length > 0 || config.showEmptyGroups) {
-      result.unshift({
-        groupValue: null,
-        rows: noStatusRows,
-      });
+    // Skip if hidden
+    if (!config.hiddenGroups?.includes('__no_status__')) {
+      const noStatusRows = groups.get(null) ?? [];
+      if (noStatusRows.length > 0 || config.showEmptyGroups) {
+        result.unshift({
+          groupValue: null,
+          rows: sortRowsInGroup(noStatusRows, null),
+        });
+      }
     }
 
     return result;
-  }, [rows, groupByColumn, groupOptions, config.groupByColumnId, config.showEmptyGroups]);
+  }, [rows, groupByColumn, groupOptions, config.groupByColumnId, config.showEmptyGroups, config.hiddenGroups, sortRowsInGroup]);
 
   // Drag handlers
   const handleDragStart = useCallback((e: React.DragEvent, rowId: string) => {
@@ -187,7 +247,7 @@ export function BoardView({
   );
 
   const handleDrop = useCallback(
-    (e: React.DragEvent, targetGroupValue: string | null) => {
+    (e: React.DragEvent, targetGroupValue: string | null, targetIndex?: number) => {
       e.preventDefault();
       setDragOverGroup(null);
 
@@ -221,9 +281,65 @@ export function BoardView({
 
       // Update the cell value
       onCellChange(draggingRowId, config.groupByColumnId, newValue);
+
+      // Update card order if target index provided
+      if (targetIndex !== undefined && onConfigChange) {
+        const groupKey = targetGroupValue ?? '__no_status__';
+        const currentOrder = config.cardOrder?.[groupKey] ?? [];
+        const newOrder = [...currentOrder];
+
+        // Add the card at the target index
+        if (!newOrder.includes(draggingRowId)) {
+          newOrder.splice(targetIndex, 0, draggingRowId);
+        }
+
+        onConfigChange({
+          ...config,
+          cardOrder: {
+            ...config.cardOrder,
+            [groupKey]: newOrder,
+          },
+        });
+      }
+
       setDraggingRowId(null);
     },
-    [draggingRowId, readOnly, onCellChange, groupByColumn, rows, config.groupByColumnId]
+    [draggingRowId, readOnly, onCellChange, groupByColumn, rows, config, onConfigChange]
+  );
+
+  const handleCardReorder = useCallback(
+    (groupValue: string | null, rowId: string, targetIndex: number) => {
+      if (!onConfigChange) return;
+
+      const groupKey = groupValue ?? '__no_status__';
+      const group = groupedRows.find((g) => (g.groupValue ?? '__no_status__') === groupKey);
+      if (!group) return;
+
+      // Get current order or create from current rows
+      const currentOrder = config.cardOrder?.[groupKey] ?? group.rows.map((r) => r.id);
+      const newOrder = [...currentOrder];
+
+      // Find current position and remove
+      const currentIndex = newOrder.indexOf(rowId);
+      if (currentIndex !== -1) {
+        newOrder.splice(currentIndex, 1);
+      }
+
+      // Insert at new position
+      const adjustedIndex = currentIndex !== -1 && currentIndex < targetIndex
+        ? targetIndex - 1
+        : targetIndex;
+      newOrder.splice(Math.max(0, adjustedIndex), 0, rowId);
+
+      onConfigChange({
+        ...config,
+        cardOrder: {
+          ...config.cardOrder,
+          [groupKey]: newOrder,
+        },
+      });
+    },
+    [config, onConfigChange, groupedRows]
   );
 
   const handleAddCard = useCallback(
@@ -243,6 +359,153 @@ export function BoardView({
       onAddRow(initialCells);
     },
     [onAddRow, groupByColumn, config.groupByColumnId]
+  );
+
+  // Card click handler
+  const handleCardClick = useCallback(
+    (rowId: string) => {
+      if (onCardClick) {
+        onCardClick(rowId);
+      } else if (useBuiltInDetailPanel) {
+        setSelectedRowId(rowId);
+      }
+    },
+    [onCardClick, useBuiltInDetailPanel]
+  );
+
+  // Detail panel handlers
+  const handleCloseDetailPanel = useCallback(() => {
+    setSelectedRowId(null);
+  }, []);
+
+  const handleDetailCellChange = useCallback(
+    (columnId: string, value: CellValue) => {
+      if (selectedRowId && onCellChange) {
+        onCellChange(selectedRowId, columnId, value);
+      }
+    },
+    [selectedRowId, onCellChange]
+  );
+
+  const handleDetailDeleteRow = useCallback(() => {
+    if (selectedRowId && onDeleteRow) {
+      onDeleteRow(selectedRowId);
+      setSelectedRowId(null);
+    }
+  }, [selectedRowId, onDeleteRow]);
+
+  const handleDetailUploadFile = useCallback(
+    async (columnId: string, file: File) => {
+      if (selectedRowId && onUploadFile) {
+        return onUploadFile(selectedRowId, columnId, file);
+      }
+      throw new Error('Upload not available');
+    },
+    [selectedRowId, onUploadFile]
+  );
+
+  const handleDetailDeleteFile = useCallback(
+    async (columnId: string, fileId: string) => {
+      if (selectedRowId && onDeleteFile) {
+        return onDeleteFile(selectedRowId, columnId, fileId);
+      }
+    },
+    [selectedRowId, onDeleteFile]
+  );
+
+  // Column menu handlers
+  const handleSort = useCallback(
+    (groupValue: string | null, order: BoardColumnSortOrder) => {
+      if (!onConfigChange) return;
+
+      const groupKey = groupValue ?? '__no_status__';
+      onConfigChange({
+        ...config,
+        groupSortOrder: {
+          ...config.groupSortOrder,
+          [groupKey]: order,
+        },
+      });
+    },
+    [config, onConfigChange]
+  );
+
+  const handleCollapse = useCallback(
+    (groupValue: string | null) => {
+      if (!onConfigChange) return;
+
+      const groupKey = groupValue ?? '__no_status__';
+      const isCollapsed = config.collapsedGroups?.includes(groupKey);
+
+      onConfigChange({
+        ...config,
+        collapsedGroups: isCollapsed
+          ? config.collapsedGroups?.filter((g) => g !== groupKey)
+          : [...(config.collapsedGroups ?? []), groupKey],
+      });
+    },
+    [config, onConfigChange]
+  );
+
+  const handleHide = useCallback(
+    (groupValue: string | null) => {
+      if (!onConfigChange) return;
+
+      const groupKey = groupValue ?? '__no_status__';
+      onConfigChange({
+        ...config,
+        hiddenGroups: [...(config.hiddenGroups ?? []), groupKey],
+      });
+    },
+    [config, onConfigChange]
+  );
+
+  // Add column handlers
+  const handleStartAddColumn = useCallback(() => {
+    setIsAddingColumn(true);
+    setNewColumnName('');
+    // Focus the input after render
+    setTimeout(() => {
+      addColumnInputRef.current?.focus();
+    }, 0);
+  }, []);
+
+  const handleCancelAddColumn = useCallback(() => {
+    setIsAddingColumn(false);
+    setNewColumnName('');
+  }, []);
+
+  const handleCreateColumn = useCallback(async () => {
+    if (!newColumnName.trim() || !onCreateSelectOption || !groupByColumn) return;
+
+    setIsCreatingColumn(true);
+    try {
+      await onCreateSelectOption(config.groupByColumnId, newColumnName.trim());
+      setIsAddingColumn(false);
+      setNewColumnName('');
+    } catch (error) {
+      console.error('Failed to create column:', error);
+    } finally {
+      setIsCreatingColumn(false);
+    }
+  }, [newColumnName, onCreateSelectOption, groupByColumn, config.groupByColumnId]);
+
+  const handleAddColumnKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleCreateColumn();
+      } else if (e.key === 'Escape') {
+        handleCancelAddColumn();
+      }
+    },
+    [handleCreateColumn, handleCancelAddColumn]
+  );
+
+  // Get selected row for detail panel
+  const selectedRow = useMemo(
+    () => (selectedRowId ? rows.find((r) => r.id === selectedRowId) : null),
+    [selectedRowId, rows]
   );
 
   // If no valid grouping column is configured
@@ -360,6 +623,9 @@ export function BoardView({
       {/* Board Columns */}
       {groupedRows.map((group) => {
         const groupKey = group.groupValue ?? '__no_status__';
+        const isCollapsed = config.collapsedGroups?.includes(groupKey) ?? false;
+        const sortOrder = config.groupSortOrder?.[groupKey] ?? 'manual';
+
         return (
           <BoardColumn
             key={groupKey}
@@ -369,19 +635,142 @@ export function BoardView({
             columns={columns}
             cardProperties={config.cardProperties}
             selectOptions={selectOptions}
-            onCardClick={onCardClick}
+            onCardClick={handleCardClick}
             onDragStart={!readOnly ? handleDragStart : undefined}
             onDragEnd={!readOnly ? handleDragEnd : undefined}
             onDragOver={!readOnly ? handleDragOver : undefined}
             onDrop={!readOnly ? handleDrop : undefined}
             isDragOver={dragOverGroup === groupKey}
             onAddCard={onAddRow && !readOnly ? handleAddCard : undefined}
+            isCollapsed={isCollapsed}
+            sortOrder={sortOrder}
+            onSort={onConfigChange ? handleSort : undefined}
+            onCollapse={onConfigChange ? handleCollapse : undefined}
+            onHide={onConfigChange ? handleHide : undefined}
+            onCardReorder={onConfigChange && !readOnly ? handleCardReorder : undefined}
           />
         );
       })}
 
+      {/* Add Column Button/Input */}
+      {onCreateSelectOption && !readOnly && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            width: isAddingColumn ? '280px' : '44px',
+            minWidth: isAddingColumn ? '280px' : '44px',
+            transition: 'width 0.2s, min-width 0.2s',
+          }}
+        >
+          {isAddingColumn ? (
+            <div
+              style={{
+                backgroundColor: 'var(--dt-bg-tertiary)',
+                borderRadius: '8px',
+                padding: '12px',
+              }}
+            >
+              <input
+                ref={addColumnInputRef}
+                type="text"
+                value={newColumnName}
+                onChange={(e) => setNewColumnName(e.target.value)}
+                onKeyDown={handleAddColumnKeyDown}
+                onBlur={() => {
+                  // Delay to allow click on create button
+                  setTimeout(() => {
+                    if (!newColumnName.trim()) {
+                      handleCancelAddColumn();
+                    }
+                  }, 150);
+                }}
+                placeholder="Column name..."
+                disabled={isCreatingColumn}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid var(--dt-border-color)',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  backgroundColor: 'var(--dt-bg-primary)',
+                  color: 'var(--dt-text-primary)',
+                  outline: 'none',
+                  marginBottom: '8px',
+                }}
+              />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={handleCreateColumn}
+                  disabled={!newColumnName.trim() || isCreatingColumn}
+                  style={{
+                    flex: 1,
+                    padding: '6px 12px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    backgroundColor: 'var(--dt-accent-primary)',
+                    color: 'white',
+                    fontSize: '13px',
+                    cursor: newColumnName.trim() && !isCreatingColumn ? 'pointer' : 'not-allowed',
+                    opacity: newColumnName.trim() && !isCreatingColumn ? 1 : 0.5,
+                  }}
+                >
+                  {isCreatingColumn ? 'Creating...' : 'Create'}
+                </button>
+                <button
+                  onClick={handleCancelAddColumn}
+                  disabled={isCreatingColumn}
+                  style={{
+                    padding: '6px 12px',
+                    border: '1px solid var(--dt-border-color)',
+                    borderRadius: '4px',
+                    backgroundColor: 'transparent',
+                    color: 'var(--dt-text-secondary)',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={handleStartAddColumn}
+              title="Add column"
+              style={{
+                width: '44px',
+                height: '44px',
+                border: '2px dashed var(--dt-border-color)',
+                borderRadius: '8px',
+                backgroundColor: 'transparent',
+                cursor: 'pointer',
+                fontSize: '20px',
+                color: 'var(--dt-text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--dt-bg-hover)';
+                e.currentTarget.style.borderColor = 'var(--dt-accent-primary)';
+                e.currentTarget.style.color = 'var(--dt-accent-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.borderColor = 'var(--dt-border-color)';
+                e.currentTarget.style.color = 'var(--dt-text-muted)';
+              }}
+            >
+              +
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Empty state when no columns */}
-      {groupedRows.length === 0 && (
+      {groupedRows.length === 0 && !onCreateSelectOption && (
         <div
           style={{
             flex: 1,
@@ -394,6 +783,27 @@ export function BoardView({
         >
           No groups to display. Add options to the "{groupByColumn.name}" column.
         </div>
+      )}
+
+      {/* Row Detail Panel */}
+      {selectedRow && useBuiltInDetailPanel && (
+        <RowDetailPanel
+          row={selectedRow}
+          columns={columns}
+          selectOptions={selectOptions}
+          isOpen={true}
+          onClose={handleCloseDetailPanel}
+          onCellChange={handleDetailCellChange}
+          onDeleteRow={onDeleteRow ? handleDetailDeleteRow : undefined}
+          readOnly={readOnly}
+          onCreateSelectOption={onCreateSelectOption}
+          onUpdateSelectOption={onUpdateSelectOption}
+          onDeleteSelectOption={onDeleteSelectOption}
+          onUploadFile={onUploadFile ? handleDetailUploadFile : undefined}
+          onDeleteFile={onDeleteFile ? handleDetailDeleteFile : undefined}
+          onSearchRelationRows={onSearchRelationRows}
+          onGetRelationRowTitle={onGetRelationRowTitle}
+        />
       )}
     </div>
   );
