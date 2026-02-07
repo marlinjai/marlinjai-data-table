@@ -1,4 +1,4 @@
-import type { Column, CellValue, SelectOption, FileReference, RelationValue, RelationColumnConfig, Row } from '@marlinjai/data-table-core';
+import type { Column, CellValue, SelectOption, FileReference, RelationValue, RelationColumnConfig, Row, TextAlignment } from '@marlinjai/data-table-core';
 import { TextCell } from './TextCell';
 import { NumberCell } from './NumberCell';
 import { DateCell } from './DateCell';
@@ -16,6 +16,7 @@ export interface CellRendererProps {
   onChange: (value: CellValue) => void;
   selectOptions?: SelectOption[];
   readOnly?: boolean;
+  alignment?: TextAlignment;
   onCreateOption?: (name: string, color?: string) => Promise<SelectOption>;
   onUpdateOption?: (optionId: string, updates: { name?: string; color?: string }) => Promise<SelectOption>;
   onDeleteOption?: (optionId: string) => Promise<void>;
@@ -32,6 +33,7 @@ export function CellRenderer({
   onChange,
   selectOptions = [],
   readOnly,
+  alignment,
   onCreateOption,
   onUpdateOption,
   onDeleteOption,
@@ -48,6 +50,7 @@ export function CellRenderer({
           onChange={onChange}
           config={column.config as any}
           readOnly={readOnly}
+          alignment={alignment}
         />
       );
 
@@ -58,6 +61,7 @@ export function CellRenderer({
           onChange={onChange}
           config={column.config as any}
           readOnly={readOnly}
+          alignment={alignment}
         />
       );
 
@@ -68,6 +72,7 @@ export function CellRenderer({
           onChange={onChange}
           config={column.config as any}
           readOnly={readOnly}
+          alignment={alignment}
         />
       );
 
@@ -77,6 +82,7 @@ export function CellRenderer({
           value={value as boolean | null}
           onChange={onChange}
           readOnly={readOnly}
+          alignment={alignment}
         />
       );
 
@@ -87,6 +93,7 @@ export function CellRenderer({
           onChange={onChange}
           options={selectOptions}
           readOnly={readOnly}
+          alignment={alignment}
           onCreateOption={onCreateOption}
           onUpdateOption={onUpdateOption}
           onDeleteOption={onDeleteOption}
@@ -101,6 +108,7 @@ export function CellRenderer({
           options={selectOptions}
           config={column.config as any}
           readOnly={readOnly}
+          alignment={alignment}
           onCreateOption={onCreateOption}
           onUpdateOption={onUpdateOption}
           onDeleteOption={onDeleteOption}
@@ -114,6 +122,7 @@ export function CellRenderer({
           onChange={onChange}
           config={column.config as any}
           readOnly={readOnly}
+          alignment={alignment}
         />
       );
 
@@ -127,6 +136,7 @@ export function CellRenderer({
             color: '#6b7280',
             fontStyle: 'italic',
             minHeight: '24px',
+            textAlign: alignment,
           }}
         >
           {value?.toString() ?? ''}
@@ -140,6 +150,7 @@ export function CellRenderer({
           onChange={onChange}
           config={column.config as RelationColumnConfig}
           readOnly={readOnly}
+          alignment={alignment}
           onSearchRows={onSearchRelationRows}
           onGetRowTitle={onGetRelationRowTitle}
         />
@@ -155,6 +166,7 @@ export function CellRenderer({
             color: '#6b7280',
             fontStyle: 'italic',
             minHeight: '24px',
+            textAlign: alignment,
           }}
         >
           {value?.toString() ?? ''}
@@ -168,6 +180,7 @@ export function CellRenderer({
           onChange={onChange}
           config={column.config as any}
           readOnly={readOnly}
+          alignment={alignment}
           onUpload={onUploadFile}
           onDelete={onDeleteFile}
         />
@@ -179,6 +192,7 @@ export function CellRenderer({
         <TimestampCell
           column={column}
           value={value as Date | string | null}
+          alignment={alignment}
         />
       );
 
@@ -190,6 +204,7 @@ export function CellRenderer({
             padding: '4px 8px',
             color: '#999',
             minHeight: '24px',
+            textAlign: alignment,
           }}
         >
           {value?.toString() ?? ''}

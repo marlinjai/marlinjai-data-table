@@ -1,14 +1,15 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { UrlColumnConfig } from '@marlinjai/data-table-core';
+import type { UrlColumnConfig, TextAlignment } from '@marlinjai/data-table-core';
 
 export interface UrlCellProps {
   value: string | null;
   onChange: (value: string) => void;
   config?: UrlColumnConfig;
   readOnly?: boolean;
+  alignment?: TextAlignment;
 }
 
-export function UrlCell({ value, onChange, config, readOnly }: UrlCellProps) {
+export function UrlCell({ value, onChange, config, readOnly, alignment = 'left' }: UrlCellProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -70,6 +71,7 @@ export function UrlCell({ value, onChange, config, readOnly }: UrlCellProps) {
           fontSize: 'inherit',
           fontFamily: 'inherit',
           backgroundColor: 'transparent',
+          textAlign: alignment,
         }}
       />
     );
@@ -86,6 +88,7 @@ export function UrlCell({ value, onChange, config, readOnly }: UrlCellProps) {
         whiteSpace: 'nowrap',
         cursor: readOnly ? 'default' : 'text',
         minHeight: '24px',
+        textAlign: alignment,
       }}
     >
       {value ? (

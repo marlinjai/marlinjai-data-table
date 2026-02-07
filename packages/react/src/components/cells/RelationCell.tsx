@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { Row, RelationValue, RelationColumnConfig } from '@marlinjai/data-table-core';
+import type { Row, RelationValue, RelationColumnConfig, TextAlignment } from '@marlinjai/data-table-core';
 import { RelationPicker } from '../relations/RelationPicker';
 
 export interface RelationCellProps {
@@ -7,9 +7,19 @@ export interface RelationCellProps {
   onChange: (value: RelationValue[]) => void;
   config: RelationColumnConfig;
   readOnly?: boolean;
+  alignment?: TextAlignment;
   // Callbacks for fetching data
   onSearchRows?: (tableId: string, query: string) => Promise<Row[]>;
   onGetRowTitle?: (tableId: string, rowId: string) => Promise<string>;
+}
+
+// Convert text alignment to flexbox justify-content
+function alignmentToJustify(alignment: TextAlignment): 'flex-start' | 'center' | 'flex-end' {
+  switch (alignment) {
+    case 'left': return 'flex-start';
+    case 'center': return 'center';
+    case 'right': return 'flex-end';
+  }
 }
 
 const CHIP_COLORS = {
@@ -23,6 +33,7 @@ export function RelationCell({
   onChange,
   config,
   readOnly = false,
+  alignment = 'left',
   onSearchRows,
   onGetRowTitle,
 }: RelationCellProps) {
@@ -156,6 +167,7 @@ export function RelationCell({
           flexWrap: 'wrap',
           gap: '4px',
           alignItems: 'center',
+          justifyContent: alignmentToJustify(alignment),
         }}
       >
         {relations.length === 0 ? (

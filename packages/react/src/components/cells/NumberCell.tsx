@@ -1,11 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { NumberColumnConfig } from '@marlinjai/data-table-core';
+import type { NumberColumnConfig, TextAlignment } from '@marlinjai/data-table-core';
 
 export interface NumberCellProps {
   value: number | null;
   onChange: (value: number | null) => void;
   config?: NumberColumnConfig;
   readOnly?: boolean;
+  alignment?: TextAlignment;
 }
 
 function formatNumber(value: number | null, config?: NumberColumnConfig): string {
@@ -39,7 +40,7 @@ function formatNumber(value: number | null, config?: NumberColumnConfig): string
   }
 }
 
-export function NumberCell({ value, onChange, config, readOnly }: NumberCellProps) {
+export function NumberCell({ value, onChange, config, readOnly, alignment = 'right' }: NumberCellProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value?.toString() ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -110,7 +111,7 @@ export function NumberCell({ value, onChange, config, readOnly }: NumberCellProp
           fontSize: 'inherit',
           fontFamily: 'inherit',
           backgroundColor: 'transparent',
-          textAlign: 'right',
+          textAlign: alignment,
         }}
       />
     );
@@ -126,7 +127,7 @@ export function NumberCell({ value, onChange, config, readOnly }: NumberCellProp
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
         cursor: readOnly ? 'default' : 'text',
-        textAlign: 'right',
+        textAlign: alignment,
         minHeight: '24px',
       }}
     >

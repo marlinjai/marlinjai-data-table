@@ -1,9 +1,19 @@
 import React from 'react';
-import type { Column, CreatedTimeColumnConfig, LastEditedTimeColumnConfig } from '@marlinjai/data-table-core';
+import type { Column, CreatedTimeColumnConfig, LastEditedTimeColumnConfig, TextAlignment } from '@marlinjai/data-table-core';
 
 export interface TimestampCellProps {
   column: Column;
   value: Date | string | null | undefined;
+  alignment?: TextAlignment;
+}
+
+// Convert text alignment to flexbox justify-content
+function alignmentToJustify(alignment: TextAlignment): 'flex-start' | 'center' | 'flex-end' {
+  switch (alignment) {
+    case 'left': return 'flex-start';
+    case 'center': return 'center';
+    case 'right': return 'flex-end';
+  }
 }
 
 function formatTimestamp(
@@ -37,7 +47,7 @@ function formatTimestamp(
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
-export function TimestampCell({ column, value }: TimestampCellProps) {
+export function TimestampCell({ column, value, alignment = 'left' }: TimestampCellProps) {
   const config = column.config as CreatedTimeColumnConfig | LastEditedTimeColumnConfig | undefined;
   const formattedValue = formatTimestamp(value, config);
   const isCreatedTime = column.type === 'created_time';
@@ -51,6 +61,7 @@ export function TimestampCell({ column, value }: TimestampCellProps) {
         fontFamily: 'monospace',
         display: 'flex',
         alignItems: 'center',
+        justifyContent: alignmentToJustify(alignment),
         gap: '6px',
       }}
       title={`${isCreatedTime ? 'Created' : 'Last edited'}: ${formattedValue}`}

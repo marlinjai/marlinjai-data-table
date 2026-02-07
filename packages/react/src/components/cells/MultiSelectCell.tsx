@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import type { SelectOption, MultiSelectColumnConfig } from '@marlinjai/data-table-core';
+import type { SelectOption, MultiSelectColumnConfig, TextAlignment } from '@marlinjai/data-table-core';
 
 export interface MultiSelectCellProps {
   value: string[] | null;
@@ -8,9 +8,19 @@ export interface MultiSelectCellProps {
   options: SelectOption[];
   config?: MultiSelectColumnConfig;
   readOnly?: boolean;
+  alignment?: TextAlignment;
   onCreateOption?: (name: string, color?: string) => Promise<SelectOption>;
   onUpdateOption?: (optionId: string, updates: { name?: string; color?: string }) => Promise<SelectOption>;
   onDeleteOption?: (optionId: string) => Promise<void>;
+}
+
+// Convert text alignment to flexbox justify-content
+function alignmentToJustify(alignment: TextAlignment): 'flex-start' | 'center' | 'flex-end' {
+  switch (alignment) {
+    case 'left': return 'flex-start';
+    case 'center': return 'center';
+    case 'right': return 'flex-end';
+  }
 }
 
 const COLOR_OPTIONS = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'brown'];
@@ -36,6 +46,7 @@ export function MultiSelectCell({
   options,
   config,
   readOnly,
+  alignment = 'left',
   onCreateOption,
   onUpdateOption,
   onDeleteOption,
@@ -181,6 +192,7 @@ export function MultiSelectCell({
           cursor: readOnly ? 'default' : 'pointer',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: alignmentToJustify(alignment),
           flexWrap: 'wrap',
           gap: '4px',
         }}

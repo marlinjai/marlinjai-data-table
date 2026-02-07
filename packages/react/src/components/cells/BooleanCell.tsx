@@ -1,12 +1,23 @@
 import { useCallback } from 'react';
+import type { TextAlignment } from '@marlinjai/data-table-core';
 
 export interface BooleanCellProps {
   value: boolean | null;
   onChange: (value: boolean) => void;
   readOnly?: boolean;
+  alignment?: TextAlignment;
 }
 
-export function BooleanCell({ value, onChange, readOnly }: BooleanCellProps) {
+// Convert text alignment to flexbox justify-content
+function alignmentToJustify(alignment: TextAlignment): 'flex-start' | 'center' | 'flex-end' {
+  switch (alignment) {
+    case 'left': return 'flex-start';
+    case 'center': return 'center';
+    case 'right': return 'flex-end';
+  }
+}
+
+export function BooleanCell({ value, onChange, readOnly, alignment = 'center' }: BooleanCellProps) {
   const handleChange = useCallback(() => {
     if (!readOnly) {
       onChange(!value);
@@ -20,7 +31,7 @@ export function BooleanCell({ value, onChange, readOnly }: BooleanCellProps) {
         padding: '4px 8px',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: alignmentToJustify(alignment),
         minHeight: '24px',
       }}
     >

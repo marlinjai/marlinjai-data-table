@@ -1,11 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { DateColumnConfig } from '@marlinjai/data-table-core';
+import type { DateColumnConfig, TextAlignment } from '@marlinjai/data-table-core';
 
 export interface DateCellProps {
   value: Date | string | null;
   onChange: (value: Date | null) => void;
   config?: DateColumnConfig;
   readOnly?: boolean;
+  alignment?: TextAlignment;
 }
 
 function formatDate(value: Date | string | null, config?: DateColumnConfig): string {
@@ -48,7 +49,7 @@ function toInputValue(value: Date | string | null, includeTime?: boolean): strin
   return date.toISOString().slice(0, 10);
 }
 
-export function DateCell({ value, onChange, config, readOnly }: DateCellProps) {
+export function DateCell({ value, onChange, config, readOnly, alignment = 'left' }: DateCellProps) {
   const [isEditing, setIsEditing] = useState(false);
   const includeTime = config?.includeTime ?? false;
   const [editValue, setEditValue] = useState(toInputValue(value, includeTime));
@@ -110,6 +111,7 @@ export function DateCell({ value, onChange, config, readOnly }: DateCellProps) {
           fontSize: 'inherit',
           fontFamily: 'inherit',
           backgroundColor: 'transparent',
+          textAlign: alignment,
         }}
       />
     );
@@ -126,6 +128,7 @@ export function DateCell({ value, onChange, config, readOnly }: DateCellProps) {
         whiteSpace: 'nowrap',
         cursor: readOnly ? 'default' : 'text',
         minHeight: '24px',
+        textAlign: alignment,
       }}
     >
       {formatDate(value, config)}

@@ -1,14 +1,15 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { TextColumnConfig } from '@marlinjai/data-table-core';
+import type { TextColumnConfig, TextAlignment } from '@marlinjai/data-table-core';
 
 export interface TextCellProps {
   value: string | null;
   onChange: (value: string) => void;
   config?: TextColumnConfig;
   readOnly?: boolean;
+  alignment?: TextAlignment;
 }
 
-export function TextCell({ value, onChange, config, readOnly }: TextCellProps) {
+export function TextCell({ value, onChange, config, readOnly, alignment = 'left' }: TextCellProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -67,6 +68,7 @@ export function TextCell({ value, onChange, config, readOnly }: TextCellProps) {
           fontSize: 'inherit',
           fontFamily: 'inherit',
           backgroundColor: 'transparent',
+          textAlign: alignment,
         }}
       />
     );
@@ -83,6 +85,7 @@ export function TextCell({ value, onChange, config, readOnly }: TextCellProps) {
         whiteSpace: 'nowrap',
         cursor: readOnly ? 'default' : 'text',
         minHeight: '24px',
+        textAlign: alignment,
       }}
     >
       {value || <span style={{ color: 'var(--dt-text-muted)' }}>{config?.placeholder || ''}</span>}

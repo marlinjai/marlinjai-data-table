@@ -1,14 +1,24 @@
 import { useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import type { FileColumnConfig, FileReference } from '@marlinjai/data-table-core';
+import type { FileColumnConfig, FileReference, TextAlignment } from '@marlinjai/data-table-core';
 
 export interface FileCellProps {
   value: FileReference[] | null;
   onChange: (value: FileReference[]) => void;
   config?: FileColumnConfig;
   readOnly?: boolean;
+  alignment?: TextAlignment;
   onUpload?: (file: File) => Promise<FileReference>;
   onDelete?: (fileId: string) => Promise<void>;
+}
+
+// Convert text alignment to flexbox justify-content
+function alignmentToJustify(alignment: TextAlignment): 'flex-start' | 'center' | 'flex-end' {
+  switch (alignment) {
+    case 'left': return 'flex-start';
+    case 'center': return 'center';
+    case 'right': return 'flex-end';
+  }
 }
 
 // File type icons
@@ -35,6 +45,7 @@ export function FileCell({
   onChange,
   config,
   readOnly,
+  alignment = 'left',
   onUpload,
   onDelete,
 }: FileCellProps) {
@@ -183,6 +194,7 @@ export function FileCell({
         cursor: readOnly ? 'default' : 'pointer',
         display: 'flex',
         alignItems: 'center',
+        justifyContent: alignmentToJustify(alignment),
         gap: '4px',
         flexWrap: 'wrap',
       }}
