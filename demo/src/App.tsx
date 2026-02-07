@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MemoryAdapter } from '@marlinjai/data-table-adapter-memory';
-import type { FileStorageAdapter, UploadedFile, FileUploadOptions, Row, GroupConfig, SubItemsConfig, FooterConfig } from '@marlinjai/data-table-core';
+import type { FileStorageAdapter, UploadedFile, FileUploadOptions, Row, GroupConfig, SubItemsConfig, FooterConfig, TextAlignment, Column } from '@marlinjai/data-table-core';
 import {
   DataTableProvider,
   TableView,
@@ -205,9 +205,21 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
   const [footerConfig, setFooterConfig] = useState<FooterConfig>({ calculations: {} });
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredRows, setFilteredRows] = useState<Row[]>([]);
+  const [columnAlignments, setColumnAlignments] = useState<Map<string, TextAlignment>>(new Map());
 
   // Use filtered rows when searching, otherwise use all rows
   const displayRows = searchTerm ? filteredRows : rows;
+
+  // Apply alignment overrides to columns
+  const columnsWithAlignment: Column[] = columns.map((col) => ({
+    ...col,
+    alignment: columnAlignments.get(col.id) ?? col.alignment,
+  }));
+
+  // Handle column alignment change from context menu
+  const handleColumnAlignmentChange = (columnId: string, alignment: TextAlignment) => {
+    setColumnAlignments((prev) => new Map(prev).set(columnId, alignment));
+  };
 
   // Find the Status column ID for BoardView grouping
   const statusColumnId = columns.find((col) => col.name === 'Status')?.id;
@@ -483,7 +495,7 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
       {/* Conditional View Rendering */}
       {(!currentView || currentView.type === 'table') && (
         <TableView
-          columns={columns}
+          columns={columnsWithAlignment}
           rows={displayRows}
           selectOptions={selectOptions}
           onCellChange={(rowId, columnId, value) => updateCell(rowId, columnId, value)}
@@ -518,6 +530,8 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
           footerConfig={footerConfig}
           onFooterConfigChange={setFooterConfig}
           showFooter={true}
+          // Column alignment
+          onColumnAlignmentChange={handleColumnAlignmentChange}
           style={{ backgroundColor: 'var(--demo-card-bg)' }}
         />
       )}
@@ -527,9 +541,9 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
           columns={columns}
           rows={rows}
           selectOptions={selectOptions}
-          config={{ groupByColumnId: statusColumnId }}
+          config={{ groupByColumnId: statusColumnId, showEmptyGroups: true }}
           onCellChange={(rowId, columnId, value) => updateCell(rowId, columnId, value)}
-          onAddRow={() => addRow()}
+          onAddRow={(initialCellValues) => addRow({ cells: initialCellValues })}
           onDeleteRow={deleteRow}
           onCreateSelectOption={createSelectOption}
           onUpdateSelectOption={updateSelectOption}
@@ -569,6 +583,7 @@ function ReceiptsTable({ tableId }: { tableId: string }) {
           <li><b>Filter</b> - Use the filter bar above the table</li>
           <li><b>Resize columns</b> - Drag the edge of any column header</li>
           <li><b>Reorder columns</b> - Drag the grip handle on column headers to reorder</li>
+          <li><b>Align columns</b> - Right-click any column header to change text alignment</li>
           <li><b>Group rows</b> - Use the "Group by" dropdown to group rows by a column</li>
           <li><b>Sub-items</b> - Hover over a row to see the "+" button, click to create a sub-item</li>
           <li><b>Add properties</b> - Click "+ New property" to add a column</li>
