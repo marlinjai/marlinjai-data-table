@@ -1,8 +1,9 @@
 import React, { useCallback, useState, useRef, useEffect, useMemo } from 'react';
-import type { Column, Row, CellValue, SelectOption, QuerySort, ColumnType, FileReference, SubItemsConfig, GroupConfig, FooterConfig } from '@marlinjai/data-table-core';
+import type { Column, Row, CellValue, SelectOption, QuerySort, ColumnType, FileReference, SubItemsConfig, GroupConfig, FooterConfig, BorderConfig, TextAlignment } from '@marlinjai/data-table-core';
 import { CellRenderer } from './cells/CellRenderer';
 import { GroupHeader } from './GroupHeader';
 import { TableFooter } from './TableFooter';
+import { ColumnHeaderMenu } from './ColumnHeaderMenu';
 import { useGrouping } from '../hooks/useGrouping';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
 
@@ -76,6 +77,14 @@ export interface TableViewProps {
   onFooterConfigChange?: (config: FooterConfig) => void;
   showFooter?: boolean;
 
+  // Border configuration
+  /** Configure table border visibility */
+  borderConfig?: BorderConfig;
+
+  // Column alignment
+  /** Called when column alignment changes via context menu */
+  onColumnAlignmentChange?: (columnId: string, alignment: TextAlignment) => void;
+
   // Styling
   className?: string;
   style?: React.CSSProperties;
@@ -133,9 +142,30 @@ export function TableView({
   footerConfig,
   onFooterConfigChange,
   showFooter = true,
+  borderConfig,
+  onColumnAlignmentChange,
   className,
   style,
 }: TableViewProps) {
+  // Default alignment based on column type
+  const getDefaultAlignment = (type: ColumnType): TextAlignment => {
+    if (type === 'number') return 'right';
+    if (type === 'boolean') return 'center';
+    return 'left';
+  };
+
+  // Compute border styles for cells
+  const getCellBorderStyles = (isLastColumn: boolean): React.CSSProperties => {
+    const borderStyle = borderConfig?.style ?? 'both';
+    const color = borderConfig?.borderColor ?? 'var(--dt-border-color)';
+    const showRows = borderStyle === 'rows' || borderStyle === 'both';
+    const showCols = borderStyle === 'columns' || borderStyle === 'both';
+
+    return {
+      borderBottom: showRows ? `1px solid ${color}` : 'none',
+      borderRight: showCols && !isLastColumn ? `1px solid ${color}` : 'none',
+    };
+  };
   // Local expanded state (used when subItemsConfig is provided but collapsedParents is managed internally)
   const [localCollapsedParents, setLocalCollapsedParents] = useState<Set<string>>(
     () => new Set(subItemsConfig?.collapsedParents ?? [])
@@ -158,6 +188,10 @@ export function TableView({
   const [newPropertyName, setNewPropertyName] = useState('');
   const [newPropertyType, setNewPropertyType] = useState<ColumnType>('text');
   const [hoveredColumnId, setHoveredColumnId] = useState<string | null>(null);
+  const [headerMenu, setHeaderMenu] = useState<{
+    columnId: string;
+    position: { x: number; y: number };
+  } | null>(null);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
 
@@ -451,7 +485,7 @@ export function TableView({
           <td
             style={{
               padding: '4px 8px',
-              borderBottom: '1px solid var(--dt-border-color)',
+              ...getCellBorderStyles(false),
               textAlign: 'center',
             }}
           >
@@ -466,6 +500,9 @@ export function TableView({
         {orderedColumns.map((column, colIndex) => {
           const width = getColumnWidth(column.id);
           const isFirstColumn = colIndex === 0;
+          const isLastColumn = colIndex === orderedColumns.length - 1;
+          const cellBorderStyles = getCellBorderStyles(isLastColumn);
+          const alignment = column.alignment ?? getDefaultAlignment(column.type);
 
           return (
             <td
@@ -474,7 +511,8 @@ export function TableView({
                 width,
                 minWidth: width,
                 maxWidth: width,
-                borderBottom: '1px solid var(--dt-border-color)',
+                ...cellBorderStyles,
+                textAlign: alignment,
                 verticalAlign: 'middle',
                 overflow: column.type === 'select' || column.type === 'multi_select' || column.type === 'file' || column.type === 'relation' ? 'visible' : 'hidden',
                 position: column.type === 'select' || column.type === 'multi_select' || column.type === 'file' || column.type === 'relation' ? 'relative' : undefined,
@@ -577,6 +615,7 @@ export function TableView({
                     onChange={(value) => handleCellChange(row.id, column.id, value)}
                     selectOptions={selectOptions.get(column.id)}
                     readOnly={readOnly}
+                    alignment={alignment}
                     onCreateOption={
                       onCreateSelectOption
                         ? (name, color) => onCreateSelectOption(column.id, name, color)
@@ -610,7 +649,7 @@ export function TableView({
         {onAddProperty && (
           <td
             style={{
-              borderBottom: '1px solid var(--dt-border-color)',
+              ...getCellBorderStyles(false),
             }}
           />
         )}
@@ -618,7 +657,7 @@ export function TableView({
           <td
             style={{
               padding: '4px 8px',
-              borderBottom: '1px solid var(--dt-border-color)',
+              ...getCellBorderStyles(true),
               textAlign: 'center',
             }}
           >
@@ -647,10 +686,13 @@ export function TableView({
     <div
       className={`dt-table-view ${className ?? ''}`}
       style={{
-        border: '1px solid var(--dt-border-color)',
+        border: (borderConfig?.showOuterBorder ?? true)
+          ? `1px solid ${borderConfig?.borderColor ?? 'var(--dt-border-color-strong)'}`
+          : 'none',
         borderRadius: '8px',
         position: 'relative',
         backgroundColor: 'var(--dt-bg-primary)',
+        overflow: 'hidden',
         ...style,
       }}
     >
@@ -740,7 +782,7 @@ export function TableView({
                     width: '40px',
                     minWidth: '40px',
                     padding: '10px 8px',
-                    borderBottom: '1px solid var(--dt-border-color)',
+                    ...getCellBorderStyles(false),
                     textAlign: 'center',
                   }}
                 >
@@ -752,7 +794,7 @@ export function TableView({
                   />
                 </th>
               )}
-              {orderedColumns.map((column) => {
+              {orderedColumns.map((column, colIndex) => {
                 const sortDir = getSortDirection(column.id);
                 const width = getColumnWidth(column.id);
                 const isDraggingThis = isItemDragging(column.id);
@@ -760,6 +802,9 @@ export function TableView({
                 const dropPosition = getDropPosition(column.id);
                 const dragProps = getDragProps(column.id);
                 const canDrag = !!onColumnReorder && !resizingColumn;
+                const isLastColumn = colIndex === orderedColumns.length - 1;
+                const cellBorderStyles = getCellBorderStyles(isLastColumn);
+                const alignment = column.alignment ?? getDefaultAlignment(column.type);
 
                 // Build className for drag states
                 const headerClasses = [
@@ -778,8 +823,8 @@ export function TableView({
                       minWidth: width,
                       maxWidth: width,
                       padding: '10px 12px',
-                      borderBottom: '1px solid var(--dt-border-color)',
-                      textAlign: 'left',
+                      ...cellBorderStyles,
+                      textAlign: alignment,
                       fontWeight: 500,
                       color: 'var(--dt-text-primary)',
                       cursor: isDragging ? 'grabbing' : (onSortChange ? 'pointer' : 'default'),
@@ -787,6 +832,15 @@ export function TableView({
                       position: 'relative',
                     }}
                     onClick={() => !isDragging && handleSort(column.id)}
+                    onContextMenu={(e) => {
+                      if (onColumnAlignmentChange) {
+                        e.preventDefault();
+                        setHeaderMenu({
+                          columnId: column.id,
+                          position: { x: e.clientX, y: e.clientY },
+                        });
+                      }
+                    }}
                     onMouseEnter={() => setHoveredColumnId(column.id)}
                     onMouseLeave={() => setHoveredColumnId(null)}
                     {...(canDrag ? {
@@ -862,7 +916,7 @@ export function TableView({
                     width: '140px',
                     minWidth: '140px',
                     padding: '10px 12px',
-                    borderBottom: '1px solid var(--dt-border-color)',
+                    ...getCellBorderStyles(false),
                     textAlign: 'left',
                     fontWeight: 400,
                   }}
@@ -968,7 +1022,7 @@ export function TableView({
                     width: '50px',
                     minWidth: '50px',
                     padding: '10px 8px',
-                    borderBottom: '1px solid var(--dt-border-color)',
+                    ...getCellBorderStyles(true),
                   }}
                 />
               )}
@@ -1040,6 +1094,7 @@ export function TableView({
               showSelectionColumn={!!onSelectionChange}
               showDeleteColumn={!!onDeleteRow}
               showAddPropertyColumn={!!onAddProperty}
+              borderConfig={borderConfig}
             />
           )}
         </table>
@@ -1094,6 +1149,23 @@ export function TableView({
           </button>
         )}
       </div>
+
+      {/* Column header alignment context menu */}
+      {headerMenu && onColumnAlignmentChange && (
+        <ColumnHeaderMenu
+          columnId={headerMenu.columnId}
+          currentAlignment={
+            orderedColumns.find((c) => c.id === headerMenu.columnId)?.alignment
+            ?? getDefaultAlignment(orderedColumns.find((c) => c.id === headerMenu.columnId)!.type)
+          }
+          position={headerMenu.position}
+          onAlignmentChange={(alignment) => {
+            onColumnAlignmentChange(headerMenu.columnId, alignment);
+            setHeaderMenu(null);
+          }}
+          onClose={() => setHeaderMenu(null)}
+        />
+      )}
     </div>
   );
 }

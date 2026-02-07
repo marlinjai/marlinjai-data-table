@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import type { Column, Row, FooterCalculationType, FooterConfig } from '@marlinjai/data-table-core';
+import type { Column, Row, FooterCalculationType, FooterConfig, BorderConfig } from '@marlinjai/data-table-core';
 
 export interface TableFooterProps {
   columns: Column[];
@@ -10,6 +10,7 @@ export interface TableFooterProps {
   showSelectionColumn?: boolean;
   showDeleteColumn?: boolean;
   showAddPropertyColumn?: boolean;
+  borderConfig?: BorderConfig;
 }
 
 // Define which calculations are available for each column type
@@ -307,9 +308,10 @@ interface FooterCellProps {
   calculation: FooterCalculationType;
   onCalculationChange: (calculation: FooterCalculationType) => void;
   width: number;
+  borderStyles?: React.CSSProperties;
 }
 
-function FooterCell({ column, rows, calculation, onCalculationChange, width }: FooterCellProps) {
+function FooterCell({ column, rows, calculation, onCalculationChange, width, borderStyles }: FooterCellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -375,6 +377,7 @@ function FooterCell({ column, rows, calculation, onCalculationChange, width }: F
         borderTop: '1px solid var(--dt-border-color)',
         backgroundColor: 'var(--dt-bg-secondary)',
         position: 'relative',
+        ...borderStyles,
       }}
     >
       <button
@@ -464,9 +467,21 @@ export function TableFooter({
   showSelectionColumn = false,
   showDeleteColumn = false,
   showAddPropertyColumn = false,
+  borderConfig,
 }: TableFooterProps) {
   const getColumnWidth = (columnId: string) => {
     return columnWidths?.get(columnId) ?? 200;
+  };
+
+  // Compute border styles for cells
+  const getCellBorderStyles = (isLastColumn: boolean): React.CSSProperties => {
+    const borderStyle = borderConfig?.style ?? 'both';
+    const color = borderConfig?.borderColor ?? 'var(--dt-border-color)';
+    const showCols = borderStyle === 'columns' || borderStyle === 'both';
+
+    return {
+      borderRight: showCols && !isLastColumn ? `1px solid ${color}` : 'none',
+    };
   };
 
   const handleCalculationChange = (columnId: string, calculation: FooterCalculationType) => {
@@ -491,19 +506,24 @@ export function TableFooter({
               padding: '6px 8px',
               borderTop: '1px solid var(--dt-border-color)',
               backgroundColor: 'var(--dt-bg-secondary)',
+              ...getCellBorderStyles(false),
             }}
           />
         )}
-        {columns.map((column) => (
-          <FooterCell
-            key={column.id}
-            column={column}
-            rows={rows}
-            calculation={footerConfig?.calculations?.[column.id] ?? 'none'}
-            onCalculationChange={(calc) => handleCalculationChange(column.id, calc)}
-            width={getColumnWidth(column.id)}
-          />
-        ))}
+        {columns.map((column, colIndex) => {
+          const isLastColumn = colIndex === columns.length - 1;
+          return (
+            <FooterCell
+              key={column.id}
+              column={column}
+              rows={rows}
+              calculation={footerConfig?.calculations?.[column.id] ?? 'none'}
+              onCalculationChange={(calc) => handleCalculationChange(column.id, calc)}
+              width={getColumnWidth(column.id)}
+              borderStyles={getCellBorderStyles(isLastColumn)}
+            />
+          );
+        })}
         {showAddPropertyColumn && (
           <td
             style={{
@@ -512,6 +532,7 @@ export function TableFooter({
               padding: '6px 8px',
               borderTop: '1px solid var(--dt-border-color)',
               backgroundColor: 'var(--dt-bg-secondary)',
+              ...getCellBorderStyles(false),
             }}
           />
         )}
@@ -523,6 +544,7 @@ export function TableFooter({
               padding: '6px 8px',
               borderTop: '1px solid var(--dt-border-color)',
               backgroundColor: 'var(--dt-bg-secondary)',
+              ...getCellBorderStyles(true),
             }}
           />
         )}

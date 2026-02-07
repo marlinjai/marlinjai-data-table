@@ -3,6 +3,7 @@ export { SubItemRow, type SubItemRowProps } from './SubItemRow';
 export { GroupHeader, type GroupHeaderProps } from './GroupHeader';
 export { TableFooter, type TableFooterProps } from './TableFooter';
 export { SearchBar, useTableSearch, type SearchBarProps } from './SearchBar';
+export { ColumnHeaderMenu, type ColumnHeaderMenuProps } from './ColumnHeaderMenu';
 export * from './cells';
 export * from './filters';
 export * from './relations';
