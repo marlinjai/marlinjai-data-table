@@ -1,3 +1,9 @@
+---
+title: Architecture
+description: System design, patterns, and package structure
+order: 1
+---
+
 # Architecture
 
 This document describes the architecture of the `@marlinjai/data-table` package.

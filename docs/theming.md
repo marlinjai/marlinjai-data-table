@@ -1,3 +1,9 @@
+---
+title: Theming
+description: CSS variables, dark mode, and component styling
+order: 3
+---
+
 # Theming Guide
 
 The data table is fully customizable via CSS variables, class names, and component props.

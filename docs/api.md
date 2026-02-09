@@ -1,3 +1,9 @@
+---
+title: API Reference
+description: Hooks, components, and type definitions
+order: 2
+---
+
 # API Reference
 
 ## Hooks

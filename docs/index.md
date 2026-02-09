@@ -1,3 +1,9 @@
+---
+title: Data Table
+description: Notion-like database component with adapters for D1, Supabase, and more
+order: 0
+---
+
 # Data Table Documentation
 
 Welcome to the `@marlinjai/data-table` documentation.

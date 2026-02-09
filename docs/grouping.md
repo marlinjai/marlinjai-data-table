@@ -1,3 +1,9 @@
+---
+title: Grouping
+description: Group rows by select columns into collapsible sections
+order: 4
+---
+
 # Grouping
 
 The data table supports grouping rows by select or multi-select column values, creating collapsible sections for organizing related data.
