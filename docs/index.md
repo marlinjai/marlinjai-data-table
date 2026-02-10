@@ -16,14 +16,6 @@ Welcome to the `@marlinjai/data-table` documentation.
 - [Sub-items](/projects/data-table/sub-items) - Hierarchical rows with parent-child relationships
 - [Grouping](/projects/data-table/grouping) - Group rows by select/multi-select columns
 
-## Quick Links
-
-- [Getting Started](#getting-started)
-- [Core Concepts](#core-concepts)
-- [Advanced Features](#advanced-features)
-- [Views](#views)
-- [Contributing](#contributing)
-
 ## Getting Started
 
 ### Installation
