@@ -202,5 +202,5 @@ When `displayMode: 'nested'`:
 
 ## Related Documentation
 
-- [Architecture - Sub-items Section](./architecture.md#sub-items-hierarchical-rows)
-- [API Reference](./api.md)
+- [Architecture - Sub-items Section](./architecture#sub-items-hierarchical-rows)
+- [API Reference](./api)
