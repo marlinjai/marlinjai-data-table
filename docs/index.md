@@ -10,11 +10,11 @@ Welcome to the `@marlinjai/data-table` documentation.
 
 ## Contents
 
-- [Architecture](./architecture) - System design, patterns, package structure
-- [Theming](./theming) - CSS customization and dark mode
-- [API Reference](./api) - Hooks and component API
-- [Sub-items](./sub-items) - Hierarchical rows with parent-child relationships
-- [Grouping](./grouping) - Group rows by select/multi-select columns
+- [Architecture](/projects/data-table/architecture) - System design, patterns, package structure
+- [Theming](/projects/data-table/theming) - CSS customization and dark mode
+- [API Reference](/projects/data-table/api) - Hooks and component API
+- [Sub-items](/projects/data-table/sub-items) - Hierarchical rows with parent-child relationships
+- [Grouping](/projects/data-table/grouping) - Group rows by select/multi-select columns
 
 ## Quick Links
 
@@ -91,7 +91,7 @@ The data table is **storage-agnostic**. You provide an adapter that implements t
 
 ### Theming
 
-All components use CSS variables for styling. See [Theming](./theming) for details.
+All components use CSS variables for styling. See [Theming](/projects/data-table/theming) for details.
 
 ```css
 :root {

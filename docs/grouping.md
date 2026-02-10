@@ -215,6 +215,6 @@ The GroupHeader uses inline styles by default, but can be customized via the `cl
 
 ## Related Documentation
 
-- [Architecture - Grouping System](./architecture#grouping-system)
-- [Board View](./architecture#boardview-kanban)
-- [API Reference](./api)
+- [Architecture - Grouping System](/projects/data-table/architecture#grouping-system)
+- [Board View](/projects/data-table/architecture#boardview-kanban)
+- [API Reference](/projects/data-table/api)
