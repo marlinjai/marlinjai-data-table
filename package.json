@@ -8,7 +8,7 @@
     "demo"
   ],
   "scripts": {
-    "build": "npm run build -w @marlinjai/data-table-core && npm run build -w @marlinjai/data-table-adapter-d1 && npm run build -w @marlinjai/data-table-adapter-memory && npm run build -w @marlinjai/data-table-react && npm run build -w @marlinjai/data-table-file-adapter-storage-brain",
+    "build": "npm run build -w @marlinjai/data-table-core && npm run build -w @marlinjai/data-table-adapter-d1 && npm run build -w @marlinjai/data-table-adapter-memory && npm run build -w @marlinjai/data-table-react && npm run build -w @marlinjai/data-table-file-adapter-storage-brain && npm run build -w @marlinjai/data-table-adapter-data-brain",
     "demo": "npm run dev -w data-table-demo",
     "dev": "npm run dev --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
