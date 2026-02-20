@@ -10,7 +10,7 @@
     "directory": "packages/adapter-d1"
   },
   "publishConfig": {
-    "access": "restricted"
+    "access": "public"
   },
   "type": "module",
   "main": "./dist/index.cjs",

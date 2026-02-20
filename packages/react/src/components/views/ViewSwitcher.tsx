@@ -145,7 +145,8 @@ export function ViewSwitcher({
         padding: '8px 12px',
         borderBottom: '1px solid var(--dt-border-color)',
         backgroundColor: 'var(--dt-bg-secondary)',
-        overflowX: 'auto',
+        position: 'relative',
+        zIndex: 10,
         minHeight: '44px',
       }}
     >

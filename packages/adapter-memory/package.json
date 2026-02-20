@@ -10,7 +10,7 @@
     "directory": "packages/adapter-memory"
   },
   "publishConfig": {
-    "access": "restricted"
+    "access": "public"
   },
   "type": "module",
   "main": "./dist/index.cjs",
