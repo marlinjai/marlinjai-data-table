@@ -83,3 +83,18 @@ CREATE TABLE IF NOT EXISTS dt_files (
 );
 
 CREATE INDEX IF NOT EXISTS idx_dt_files_row_column ON dt_files(row_id, column_id);
+
+-- Views
+CREATE TABLE IF NOT EXISTS dt_views (
+  id            TEXT PRIMARY KEY,
+  table_id      TEXT NOT NULL REFERENCES dt_tables(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  type          TEXT NOT NULL DEFAULT 'table',
+  is_default    INTEGER NOT NULL DEFAULT 0,
+  position      INTEGER NOT NULL DEFAULT 0,
+  config        TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_dt_views_table ON dt_views(table_id);
