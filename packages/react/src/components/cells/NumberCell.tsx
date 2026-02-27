@@ -52,7 +52,7 @@ export function NumberCell({ value, onChange, config, readOnly, alignment = 'rig
     }
   }, [isEditing]);
 
-  const handleDoubleClick = useCallback(() => {
+  const handleClick = useCallback(() => {
     if (!readOnly) {
       setEditValue(value?.toString() ?? '');
       setIsEditing(true);
@@ -119,7 +119,7 @@ export function NumberCell({ value, onChange, config, readOnly, alignment = 'rig
 
   return (
     <div
-      onDoubleClick={handleDoubleClick}
+      onClick={handleClick}
       className="dt-cell-number"
       style={{
         padding: '4px 8px',

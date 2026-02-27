@@ -21,7 +21,7 @@ export function TextCell({ value, onChange, config, readOnly, alignment = 'left'
     }
   }, [isEditing]);
 
-  const handleDoubleClick = useCallback(() => {
+  const handleClick = useCallback(() => {
     if (!readOnly) {
       setEditValue(value ?? '');
       setIsEditing(true);
@@ -76,7 +76,7 @@ export function TextCell({ value, onChange, config, readOnly, alignment = 'left'
 
   return (
     <div
-      onDoubleClick={handleDoubleClick}
+      onClick={handleClick}
       className="dt-cell-text"
       style={{
         padding: '4px 8px',
