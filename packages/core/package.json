@@ -1,6 +1,6 @@
 {
   "name": "@marlinjai/data-table-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Core types and interfaces for Notion-like data table",
   "author": "marlinjai",
   "license": "MIT",
