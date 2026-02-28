@@ -451,6 +451,29 @@
   color: var(--dt-text-primary);
 }
 
+/* ==================== Group Header ==================== */
+
+.dt-group-header {
+  background: transparent !important;
+}
+
+.dt-group-header td {
+  background: transparent !important;
+}
+
+.dt-group-header-bar:hover {
+  background: var(--dt-glass-bg, rgba(255, 255, 255, 0.7)) !important;
+  border-color: var(--dt-glass-border-highlight, rgba(255, 255, 255, 0.22)) !important;
+  box-shadow: var(--dt-glass-inner-shadow), 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .dt-group-header-bar {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
 /* ==================== Filter Bar ==================== */
 
 .dt-filter-bar {

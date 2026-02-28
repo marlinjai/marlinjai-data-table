@@ -30,25 +30,32 @@ export function GroupHeader({
   return (
     <tr
       className={`dt-group-header ${className ?? ''}`}
-      style={{
-        backgroundColor: 'var(--dt-bg-tertiary)',
-      }}
     >
       <td
         colSpan={colSpan}
         style={{
-          padding: '8px 12px',
-          borderBottom: '1px solid var(--dt-border-color)',
-          cursor: 'pointer',
-          userSelect: 'none',
+          padding: '0',
+          border: 'none',
+          background: 'transparent',
         }}
-        onClick={onToggleCollapse}
       >
         <div
+          className="dt-group-header-bar"
+          onClick={onToggleCollapse}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '10px',
+            padding: '10px 16px',
+            cursor: 'pointer',
+            userSelect: 'none',
+            marginTop: '16px',
+            marginBottom: '4px',
+            borderRadius: 'var(--dt-border-radius-sm, 6px)',
+            background: 'var(--dt-glass-bg-subtle, rgba(255, 255, 255, 0.5))',
+            border: '1px solid var(--dt-glass-border, rgba(255, 255, 255, 0.12))',
+            boxShadow: 'var(--dt-glass-inner-shadow, inset 0 1px 0 0 rgba(255, 255, 255, 0.06)), 0 2px 8px rgba(0, 0, 0, 0.06)',
+            transition: 'all 0.15s ease',
           }}
         >
           {/* Expand/Collapse chevron */}
@@ -73,7 +80,8 @@ export function GroupHeader({
             style={{
               fontWeight: 600,
               color: 'var(--dt-text-primary)',
-              fontSize: '14px',
+              fontSize: 'var(--dt-font-size, 13.5px)',
+              letterSpacing: 'var(--dt-letter-spacing, -0.01em)',
             }}
           >
             {label}
@@ -82,11 +90,12 @@ export function GroupHeader({
           {/* Row count badge */}
           <span
             style={{
-              fontSize: '12px',
-              color: 'var(--dt-text-secondary)',
-              backgroundColor: 'var(--dt-border-color)',
+              fontSize: 'var(--dt-font-size-xs, 11px)',
+              color: 'var(--dt-text-muted)',
+              backgroundColor: 'var(--dt-bg-tertiary, rgba(64, 64, 64, 0.45))',
               padding: '2px 8px',
               borderRadius: '10px',
+              fontWeight: 500,
             }}
           >
             {rowCount}
