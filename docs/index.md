@@ -80,6 +80,9 @@ The data table is **storage-agnostic**. You provide an adapter that implements t
 | `formula` | Computed values from formulas |
 | `rollup` | Aggregated values from related rows |
 | `relation` | Links to rows in other tables |
+| `file` | File attachments |
+| `created_time` | Auto-populated row creation timestamp |
+| `last_edited_time` | Auto-populated last edit timestamp |
 
 ### Theming
 

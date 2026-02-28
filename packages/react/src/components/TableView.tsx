@@ -899,13 +899,13 @@ export function TableView({
         }
       } : undefined}
       style={{
-        border: (borderConfig?.showOuterBorder ?? true)
+        border: isGrouped ? 'none' : (borderConfig?.showOuterBorder ?? true)
           ? `1px solid ${borderConfig?.borderColor ?? 'var(--dt-border-color-strong)'}`
           : 'none',
-        borderRadius: '8px',
+        borderRadius: isGrouped ? '0' : '8px',
         position: 'relative',
-        backgroundColor: 'var(--dt-bg-primary)',
-        overflow: 'hidden',
+        backgroundColor: isGrouped ? 'transparent' : 'var(--dt-bg-primary)',
+        overflow: isGrouped ? 'visible' : 'hidden',
         outline: 'none',
         ...style,
       }}
@@ -996,6 +996,83 @@ export function TableView({
         }
       `}</style>
       <div className="dt-table-scroll-container">
+        {/* Column header rendering helper - reused per group in grouped mode */}
+        {isGrouped ? (
+          // Grouped mode: each group is its own section with separate table
+          (() => {
+            let runningIndex = 0;
+            return (
+              <>
+                {groups.map((group) => (
+                  <div key={group.value} className="dt-group-section" style={{ marginBottom: '20px' }}>
+                    <GroupHeader
+                      label={group.label}
+                      rowCount={group.rows.length}
+                      isCollapsed={group.isCollapsed}
+                      onToggleCollapse={() => handleToggleGroupCollapse(group.value)}
+                      colSpan={totalColumns}
+                    />
+                    {!group.isCollapsed && (
+                      <table
+                        style={{
+                          width: '100%',
+                          borderCollapse: 'collapse',
+                          fontSize: '14px',
+                          tableLayout: 'fixed',
+                          borderRadius: 'var(--dt-border-radius-sm, 6px)',
+                          overflow: 'hidden',
+                          border: '1px solid var(--dt-border-color)',
+                        }}
+                      >
+                        <thead>
+                          <tr style={{ backgroundColor: 'var(--dt-bg-secondary)' }}>
+                            {onSelectionChange && (
+                              <th style={{ width: '40px', minWidth: '40px', padding: '10px 8px', ...getCellBorderStyles(false), textAlign: 'center' }}>
+                                <input type="checkbox" checked={false} onChange={handleSelectAll} style={{ cursor: 'pointer' }} />
+                              </th>
+                            )}
+                            {orderedColumns.map((column, colIndex) => {
+                              const width = getColumnWidth(column.id);
+                              const isLastColumn = colIndex === orderedColumns.length - 1;
+                              const alignment = column.alignment ?? getDefaultAlignment(column.type);
+                              return (
+                                <th key={column.id} style={{ width: `${width}px`, minWidth: `${width}px`, padding: '8px 12px', ...getCellBorderStyles(isLastColumn), textAlign: alignment, fontWeight: 500, color: 'var(--dt-text-secondary)', fontSize: 'var(--dt-font-size-sm, 12px)' }}>
+                                  {column.name}
+                                </th>
+                              );
+                            })}
+                            {onDeleteRow && <th style={{ width: '50px', minWidth: '50px', padding: '10px 8px', ...getCellBorderStyles(true) }} />}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.rows.map((row) => {
+                            const idx = runningIndex++;
+                            return renderDataRow(row, 0, false, idx);
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                ))}
+
+                {/* Empty state */}
+                {!groups.some((g) => g.rows.length > 0) && !isLoading && (
+                  <div style={{ padding: '32px', textAlign: 'center', color: 'var(--dt-text-muted)' }}>
+                    No data yet
+                  </div>
+                )}
+
+                {/* Loading state */}
+                {isLoading && (
+                  <div style={{ padding: '16px', textAlign: 'center', color: 'var(--dt-text-muted)' }}>
+                    Loading...
+                  </div>
+                )}
+              </>
+            );
+          })()
+        ) : (
+        // Ungrouped mode: single table as before
         <table
           style={{
             width: '100%',
@@ -1259,36 +1336,13 @@ export function TableView({
             </tr>
           </thead>
           <tbody>
-            {/* Render rows - either grouped or flat/hierarchical */}
-            {isGrouped ? (
-              // Grouped rendering
-              (() => {
-                let runningIndex = 0;
-                return groups.map((group) => (
-                  <React.Fragment key={group.value}>
-                    <GroupHeader
-                      label={group.label}
-                      rowCount={group.rows.length}
-                      isCollapsed={group.isCollapsed}
-                      onToggleCollapse={() => handleToggleGroupCollapse(group.value)}
-                      colSpan={totalColumns}
-                    />
-                    {!group.isCollapsed && group.rows.map((row) => {
-                      const idx = runningIndex++;
-                      return renderDataRow(row, 0, false, idx);
-                    })}
-                  </React.Fragment>
-                ));
-              })()
-            ) : (
-              // Flat or hierarchical rendering
-              flattenedRows.map(({ row, depth, hasChildren }, idx) =>
-                renderDataRow(row, depth, hasChildren, idx)
-              )
+            {/* Flat or hierarchical rendering (ungrouped only) */}
+            {flattenedRows.map(({ row, depth, hasChildren }, idx) =>
+              renderDataRow(row, depth, hasChildren, idx)
             )}
 
             {/* Empty state */}
-            {(isGrouped ? !groups.some((g) => g.rows.length > 0) : rows.length === 0) && !isLoading && (
+            {rows.length === 0 && !isLoading && (
               <tr>
                 <td
                   colSpan={totalColumns}
@@ -1334,6 +1388,7 @@ export function TableView({
             />
           )}
         </table>
+        )}
       </div>
 
       {/* Footer with Add Row and Load More */}
