@@ -48,12 +48,30 @@ All CSS variables use the `--dt-` prefix. Override them in your CSS:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `--dt-cell-padding-x` | `12px` | Horizontal cell padding |
-| `--dt-cell-padding-y` | `8px` | Vertical cell padding |
-| `--dt-header-height` | `36px` | Header row height |
-| `--dt-row-height` | `32px` | Data row height |
-| `--dt-border-radius` | `6px` | Border radius |
-| `--dt-font-size` | `13px` | Base font size |
+| `--dt-cell-padding-x` | `14px` | Horizontal cell padding |
+| `--dt-cell-padding-y` | `10px` | Vertical cell padding |
+| `--dt-header-height` | `40px` | Header row height |
+| `--dt-row-height` | `38px` | Data row height |
+| `--dt-border-radius` | `10px` | Border radius |
+| `--dt-border-radius-sm` | `6px` | Small border radius |
+| `--dt-font-size` | `13.5px` | Base font size |
+| `--dt-letter-spacing` | `-0.01em` | Letter spacing |
+
+#### Glass Effect
+
+These variables control the frosted glass aesthetic. Override them to customize the translucency:
+
+| Variable | Default (Light) | Description |
+|----------|-----------------|-------------|
+| `--dt-glass-blur` | `16px` | Backdrop blur amount |
+| `--dt-glass-bg` | `rgba(255, 255, 255, 0.7)` | Glass panel background |
+| `--dt-glass-bg-subtle` | `rgba(255, 255, 255, 0.5)` | Subtle glass background |
+| `--dt-glass-border` | `rgba(255, 255, 255, 0.25)` | Glass border color |
+| `--dt-glass-border-highlight` | `rgba(255, 255, 255, 0.4)` | Highlighted glass border |
+| `--dt-glass-inner-shadow` | `inset 0 1px 0 0 rgba(255,255,255,0.15)` | Inner glow highlight |
+| `--dt-glass-outer-shadow` | `0 8px 32px rgba(0,0,0,0.08), ...` | Outer shadow |
+
+In dark mode these automatically switch to darker, more opaque values. The table, dropdowns, and popovers use `backdrop-filter: blur()` wrapped in `@supports` for graceful fallback.
 
 #### Select Tag Colors
 
@@ -75,18 +93,21 @@ Each color has a `-bg` and `-text` variant:
 
 ### Automatic (System Preference)
 
-Dark mode automatically activates based on system preference:
+Dark mode automatically activates based on system preference. In dark mode, backgrounds become semi-transparent for a frosted glass effect:
 
 ```css
 @media (prefers-color-scheme: dark) {
   :root {
-    --dt-bg-primary: #1f2937;
+    --dt-bg-primary: rgba(28, 28, 32, 0.45);
+    --dt-bg-secondary: rgba(18, 18, 22, 0.4);
+    --dt-border-color: rgba(255, 255, 255, 0.12);
+    --dt-glass-blur: 20px;
     /* ... other dark values */
   }
 }
 ```
 
-This is included by default in the package CSS.
+This is included by default in the package CSS. When placed over a rich background (gradients, aurora effects), the glass surfaces reveal depth and color through the translucent panels.
 
 ### Manual Toggle
 

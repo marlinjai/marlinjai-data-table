@@ -116,10 +116,12 @@ The main table component.
   onAddRow={() => {}}
   onDeleteRow={(rowId) => {}}
   onColumnResize={(columnId, width) => {}}
+  onColumnAlignmentChange={(columnId, alignment) => {}}
   onAddProperty={(name, type) => {}}
   onCreateSelectOption={(columnId, name, color) => {}}
   onUpdateSelectOption={(optionId, updates) => {}}
   onDeleteSelectOption={(columnId, optionId) => {}}
+  enableKeyboardNav={true}
   sorts={sorts}
   onSortChange={(sorts) => {}}
   selectedRows={selectedRows}
@@ -143,7 +145,9 @@ The main table component.
 | `onAddRow` | `() => void` | No | Add row handler |
 | `onDeleteRow` | `(rowId) => void` | No | Delete row handler |
 | `onColumnResize` | `(colId, width) => void` | No | Column resize handler |
+| `onColumnAlignmentChange` | `(colId, alignment) => void` | No | Column alignment handler (left/center/right) |
 | `onAddProperty` | `(name, type) => void` | No | Add column handler |
+| `enableKeyboardNav` | `boolean` | No | Enable arrow key / Tab / Enter cell navigation (default: `true`) |
 | `sorts` | `QuerySort[]` | No | Active sorts |
 | `onSortChange` | `(sorts) => void` | No | Sort change handler |
 | `selectedRows` | `Set<string>` | No | Selected row IDs |
@@ -530,10 +534,12 @@ The main table component.
   onAddRow={() => {}}
   onDeleteRow={(rowId) => {}}
   onColumnResize={(columnId, width) => {}}
+  onColumnAlignmentChange={(columnId, alignment) => {}}
   onAddProperty={(name, type) => {}}
   onCreateSelectOption={(columnId, name, color) => {}}
   onUpdateSelectOption={(optionId, updates) => {}}
   onDeleteSelectOption={(columnId, optionId) => {}}
+  enableKeyboardNav={true}
   sorts={sorts}
   onSortChange={(sorts) => {}}
   selectedRows={selectedRows}
@@ -557,7 +563,9 @@ The main table component.
 | `onAddRow` | `() => void` | No | Add row handler |
 | `onDeleteRow` | `(rowId) => void` | No | Delete row handler |
 | `onColumnResize` | `(colId, width) => void` | No | Column resize handler |
+| `onColumnAlignmentChange` | `(colId, alignment) => void` | No | Column alignment handler (left/center/right) |
 | `onAddProperty` | `(name, type) => void` | No | Add column handler |
+| `enableKeyboardNav` | `boolean` | No | Enable arrow key / Tab / Enter cell navigation (default: `true`) |
 | `sorts` | `QuerySort[]` | No | Active sorts |
 | `onSortChange` | `(sorts) => void` | No | Sort change handler |
 | `selectedRows` | `Set<string>` | No | Selected row IDs |

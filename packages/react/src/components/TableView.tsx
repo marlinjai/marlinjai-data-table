@@ -890,6 +890,14 @@ export function TableView({
       className={`dt-table-view ${className ?? ''}`}
       tabIndex={enableKeyboardNav ? 0 : undefined}
       onKeyDown={enableKeyboardNav ? handleKeyboardNav : undefined}
+      onClick={enableKeyboardNav ? (e: React.MouseEvent) => {
+        // Re-focus the container when clicking inside the table so keyboard nav keeps working
+        // Skip if clicking on an input/textarea/button (they need their own focus)
+        const tag = (e.target as HTMLElement).tagName;
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'BUTTON' && tag !== 'SELECT' && !(e.target as HTMLElement).isContentEditable) {
+          tableContainerRef.current?.focus();
+        }
+      } : undefined}
       style={{
         border: (borderConfig?.showOuterBorder ?? true)
           ? `1px solid ${borderConfig?.borderColor ?? 'var(--dt-border-color-strong)'}`
