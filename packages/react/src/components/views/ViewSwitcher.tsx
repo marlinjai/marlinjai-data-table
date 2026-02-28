@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, createElement } from 'react';
 import type { View, ViewType } from '@marlinjai/data-table-core';
 
 export interface ViewSwitcherProps {
@@ -10,14 +10,64 @@ export interface ViewSwitcherProps {
   onRenameView: (viewId: string, name: string) => void;
 }
 
-const VIEW_TYPE_ICONS: Record<ViewType, string> = {
-  table: '=',
-  board: '|||',
-  calendar: 'Cal',
-  gallery: '::',
-  timeline: '--',
-  list: '-',
-};
+function ViewIcon({ type, size = 14, color }: { type: ViewType; size?: number; color: string }) {
+  const props = { width: size, height: size, viewBox: '0 0 16 16', fill: 'none', stroke: color, strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+
+  switch (type) {
+    case 'table':
+      return createElement('svg', props,
+        createElement('rect', { x: 1.5, y: 2.5, width: 13, height: 11, rx: 1.5 }),
+        createElement('line', { x1: 1.5, y1: 6, x2: 14.5, y2: 6 }),
+        createElement('line', { x1: 1.5, y1: 9.5, x2: 14.5, y2: 9.5 }),
+        createElement('line', { x1: 5.5, y1: 6, x2: 5.5, y2: 13.5 }),
+      );
+    case 'board':
+      return createElement('svg', props,
+        createElement('rect', { x: 1.5, y: 2, width: 3.5, height: 12, rx: 1 }),
+        createElement('rect', { x: 6.25, y: 2, width: 3.5, height: 8, rx: 1 }),
+        createElement('rect', { x: 11, y: 2, width: 3.5, height: 10, rx: 1 }),
+      );
+    case 'calendar':
+      return createElement('svg', props,
+        createElement('rect', { x: 1.5, y: 3, width: 13, height: 11, rx: 1.5 }),
+        createElement('line', { x1: 1.5, y1: 6.5, x2: 14.5, y2: 6.5 }),
+        createElement('line', { x1: 4.5, y1: 1.5, x2: 4.5, y2: 4.5 }),
+        createElement('line', { x1: 11.5, y1: 1.5, x2: 11.5, y2: 4.5 }),
+        createElement('circle', { cx: 5, cy: 9.5, r: 0.6, fill: color, stroke: 'none' }),
+        createElement('circle', { cx: 8, cy: 9.5, r: 0.6, fill: color, stroke: 'none' }),
+        createElement('circle', { cx: 11, cy: 9.5, r: 0.6, fill: color, stroke: 'none' }),
+        createElement('circle', { cx: 5, cy: 12, r: 0.6, fill: color, stroke: 'none' }),
+        createElement('circle', { cx: 8, cy: 12, r: 0.6, fill: color, stroke: 'none' }),
+      );
+    case 'gallery':
+      return createElement('svg', props,
+        createElement('rect', { x: 1.5, y: 1.5, width: 5.5, height: 5.5, rx: 1.5 }),
+        createElement('rect', { x: 9, y: 1.5, width: 5.5, height: 5.5, rx: 1.5 }),
+        createElement('rect', { x: 1.5, y: 9, width: 5.5, height: 5.5, rx: 1.5 }),
+        createElement('rect', { x: 9, y: 9, width: 5.5, height: 5.5, rx: 1.5 }),
+      );
+    case 'timeline':
+      return createElement('svg', props,
+        createElement('line', { x1: 1.5, y1: 4, x2: 14.5, y2: 4 }),
+        createElement('line', { x1: 1.5, y1: 8, x2: 14.5, y2: 8 }),
+        createElement('line', { x1: 1.5, y1: 12, x2: 14.5, y2: 12 }),
+        createElement('rect', { x: 3, y: 2.5, width: 5, height: 3, rx: 1, fill: color, opacity: 0.3 }),
+        createElement('rect', { x: 6, y: 6.5, width: 6, height: 3, rx: 1, fill: color, opacity: 0.3 }),
+        createElement('rect', { x: 2, y: 10.5, width: 4, height: 3, rx: 1, fill: color, opacity: 0.3 }),
+      );
+    case 'list':
+      return createElement('svg', props,
+        createElement('line', { x1: 5, y1: 3.5, x2: 14, y2: 3.5 }),
+        createElement('line', { x1: 5, y1: 7, x2: 14, y2: 7 }),
+        createElement('line', { x1: 5, y1: 10.5, x2: 14, y2: 10.5 }),
+        createElement('circle', { cx: 2.5, cy: 3.5, r: 1, fill: color, stroke: 'none' }),
+        createElement('circle', { cx: 2.5, cy: 7, r: 1, fill: color, stroke: 'none' }),
+        createElement('circle', { cx: 2.5, cy: 10.5, r: 1, fill: color, stroke: 'none' }),
+      );
+    default:
+      return null;
+  }
+}
 
 const VIEW_TYPE_LABELS: Record<ViewType, string> = {
   table: 'Table',
@@ -195,15 +245,11 @@ export function ViewSwitcher({
                 }
               }}
             >
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: isActive ? 'var(--dt-accent-primary)' : 'var(--dt-text-muted)',
-                }}
-              >
-                {VIEW_TYPE_ICONS[view.type]}
-              </span>
+              <ViewIcon
+                type={view.type}
+                size={14}
+                color={isActive ? 'var(--dt-accent-primary)' : 'var(--dt-text-muted)'}
+              />
               {isEditing ? (
                 <input
                   ref={editInputRef}
@@ -231,19 +277,22 @@ export function ViewSwitcher({
               <span
                 onClick={(e) => handleDropdownToggle(e, view.id)}
                 style={{
-                  padding: '2px 4px',
+                  padding: '2px 2px',
                   cursor: 'pointer',
-                  opacity: 0.5,
-                  fontSize: '10px',
+                  opacity: 0.4,
+                  display: 'flex',
+                  alignItems: 'center',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.opacity = '1';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '0.5';
+                  e.currentTarget.style.opacity = '0.4';
                 }}
               >
-                v
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="4 6 8 10 12 6" />
+                </svg>
               </span>
             </button>
 
@@ -384,16 +433,8 @@ export function ViewSwitcher({
                   e.currentTarget.style.backgroundColor = 'transparent';
                 }}
               >
-                <span
-                  style={{
-                    width: '20px',
-                    textAlign: 'center',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    color: 'var(--dt-text-muted)',
-                  }}
-                >
-                  {VIEW_TYPE_ICONS[type]}
+                <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ViewIcon type={type} size={14} color="var(--dt-text-muted)" />
                 </span>
                 <span>{VIEW_TYPE_LABELS[type]}</span>
               </button>

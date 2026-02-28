@@ -12,11 +12,22 @@
 .dt-table {
   font-family: var(--dt-font-family);
   font-size: var(--dt-font-size);
+  letter-spacing: var(--dt-letter-spacing);
   color: var(--dt-text-primary);
   background-color: var(--dt-bg-primary);
-  border: 1px solid var(--dt-border-color);
+  border: 1px solid var(--dt-glass-border);
   border-radius: var(--dt-border-radius);
+  box-shadow: var(--dt-glass-outer-shadow);
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .dt-table {
+    backdrop-filter: blur(var(--dt-glass-blur));
+    -webkit-backdrop-filter: blur(var(--dt-glass-blur));
+  }
 }
 
 .dt-table-scroll-container {
@@ -36,6 +47,7 @@
   background-color: var(--dt-bg-secondary);
   border-bottom: 1px solid var(--dt-border-color);
   min-height: var(--dt-header-height);
+  box-shadow: var(--dt-glass-inner-shadow);
 }
 
 .dt-header-cell {
@@ -92,6 +104,7 @@
 
 .dt-row:hover {
   background-color: var(--dt-bg-hover);
+  box-shadow: var(--dt-glass-inner-shadow);
 }
 
 .dt-row-selected {
@@ -166,17 +179,42 @@
 /* ==================== Checkbox ==================== */
 
 .dt-checkbox {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   width: 16px;
   height: 16px;
-  border: 1px solid var(--dt-border-color-strong);
-  border-radius: var(--dt-border-radius-sm);
+  min-width: 16px;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
   cursor: pointer;
-  accent-color: var(--dt-accent-primary);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: all 150ms ease;
+  position: relative;
+}
+
+.dt-checkbox:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .dt-checkbox:checked {
-  background-color: var(--dt-accent-primary);
+  background: var(--dt-accent-primary);
   border-color: var(--dt-accent-primary);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.2), 0 1px 4px rgba(37, 99, 235, 0.35);
+}
+
+.dt-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
 }
 
 /* ==================== Select Tags ==================== */
@@ -189,6 +227,8 @@
   border-radius: var(--dt-border-radius-sm);
   font-size: var(--dt-font-size);
   white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
 }
 
 .dt-tag-gray { background-color: var(--dt-tag-gray-bg); color: var(--dt-tag-gray-text); }
@@ -229,9 +269,16 @@
   max-height: 300px;
   overflow-y: auto;
   background-color: var(--dt-bg-primary);
-  border: 1px solid var(--dt-border-color);
+  border: 1px solid var(--dt-glass-border);
   border-radius: var(--dt-border-radius);
-  box-shadow: var(--dt-shadow-md);
+  box-shadow: var(--dt-glass-outer-shadow);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .dt-dropdown {
+    backdrop-filter: blur(var(--dt-glass-blur));
+    -webkit-backdrop-filter: blur(var(--dt-glass-blur));
+  }
 }
 
 .dt-dropdown-item {
@@ -283,9 +330,16 @@
   z-index: var(--dt-z-popover);
   width: 200px;
   background-color: var(--dt-bg-primary);
-  border: 1px solid var(--dt-border-color);
+  border: 1px solid var(--dt-glass-border);
   border-radius: var(--dt-border-radius);
-  box-shadow: var(--dt-shadow-md);
+  box-shadow: var(--dt-glass-outer-shadow);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .dt-popover {
+    backdrop-filter: blur(var(--dt-glass-blur));
+    -webkit-backdrop-filter: blur(var(--dt-glass-blur));
+  }
 }
 
 .dt-popover-section {
@@ -370,7 +424,8 @@
 .dt-button-secondary {
   background-color: var(--dt-bg-secondary);
   color: var(--dt-text-primary);
-  border: 1px solid var(--dt-border-color);
+  border: 1px solid var(--dt-glass-border);
+  box-shadow: var(--dt-glass-inner-shadow);
 }
 
 .dt-button-secondary:hover {
@@ -383,7 +438,7 @@
 }
 
 .dt-button-danger:hover {
-  background-color: #fef2f2;
+  background-color: rgba(239, 68, 68, 0.12);
 }
 
 .dt-button-ghost {
@@ -405,6 +460,7 @@
   padding: 8px 12px;
   border-bottom: 1px solid var(--dt-border-color);
   background-color: var(--dt-bg-secondary);
+  box-shadow: var(--dt-glass-inner-shadow);
   flex-wrap: wrap;
 }
 
@@ -413,8 +469,8 @@
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  background-color: var(--dt-bg-primary);
-  border: 1px solid var(--dt-border-color);
+  background-color: var(--dt-glass-bg-subtle);
+  border: 1px solid var(--dt-glass-border);
   border-radius: var(--dt-border-radius-sm);
   font-size: var(--dt-font-size-sm);
 }

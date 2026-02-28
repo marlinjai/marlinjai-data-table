@@ -68,11 +68,31 @@ export function useColumns({ tableId }: UseColumnsOptions): UseColumnsResult {
 
   const updateColumn = useCallback(
     async (columnId: string, updates: UpdateColumnInput) => {
+      // Alignment is UI-only (not persisted by all adapters), so handle it locally
+      if (updates.alignment !== undefined) {
+        const { alignment, ...apiUpdates } = updates;
+        setColumns((prev) =>
+          prev.map((c) => (c.id === columnId ? { ...c, alignment } : c))
+        );
+        // If there are other updates beyond alignment, send them to the API
+        if (Object.keys(apiUpdates).length > 0) {
+          const column = await dbAdapter.updateColumn(columnId, apiUpdates);
+          setColumns((prev) =>
+            prev.map((c) => (c.id === columnId ? { ...column, alignment } : c))
+          );
+          return { ...column, alignment };
+        }
+        const existing = columns.find((c) => c.id === columnId);
+        return existing ? { ...existing, alignment } : existing!;
+      }
       const column = await dbAdapter.updateColumn(columnId, updates);
-      setColumns((prev) => prev.map((c) => (c.id === columnId ? column : c)));
+      // Preserve any existing local alignment when API returns
+      setColumns((prev) =>
+        prev.map((c) => (c.id === columnId ? { ...column, alignment: c.alignment } : c))
+      );
       return column;
     },
-    [dbAdapter]
+    [dbAdapter, columns]
   );
 
   const deleteColumn = useCallback(

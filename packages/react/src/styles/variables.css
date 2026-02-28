@@ -42,22 +42,23 @@
 
   /* ==================== Sizing ==================== */
 
-  --dt-cell-padding-x: 12px;
-  --dt-cell-padding-y: 8px;
-  --dt-header-height: 36px;
-  --dt-row-height: 32px;
-  --dt-border-radius: 6px;
-  --dt-border-radius-sm: 4px;
+  --dt-cell-padding-x: 14px;
+  --dt-cell-padding-y: 10px;
+  --dt-header-height: 40px;
+  --dt-row-height: 38px;
+  --dt-border-radius: 10px;
+  --dt-border-radius-sm: 6px;
 
   /* ==================== Typography ==================== */
 
-  --dt-font-family: inherit;
-  --dt-font-size: 13px;
+  --dt-font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, sans-serif;
+  --dt-font-size: 13.5px;
   --dt-font-size-sm: 12px;
   --dt-font-size-xs: 11px;
   --dt-font-weight-normal: 400;
   --dt-font-weight-medium: 500;
   --dt-font-weight-semibold: 600;
+  --dt-letter-spacing: -0.01em;
 
   /* ==================== Shadows ==================== */
 
@@ -76,6 +77,16 @@
   --dt-transition-fast: 100ms ease;
   --dt-transition-normal: 150ms ease;
   --dt-transition-slow: 200ms ease;
+
+  /* ==================== Glass Effect ==================== */
+
+  --dt-glass-blur: 16px;
+  --dt-glass-bg: rgba(255, 255, 255, 0.7);
+  --dt-glass-bg-subtle: rgba(255, 255, 255, 0.5);
+  --dt-glass-border: rgba(255, 255, 255, 0.25);
+  --dt-glass-border-highlight: rgba(255, 255, 255, 0.4);
+  --dt-glass-inner-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+  --dt-glass-outer-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
 
   /* ==================== Select Tag Colors ==================== */
 
@@ -103,16 +114,16 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    /* Backgrounds - pure neutral grays */
-    --dt-bg-primary: #262626;
-    --dt-bg-secondary: #171717;
-    --dt-bg-tertiary: #404040;
-    --dt-bg-hover: #404040;
-    --dt-bg-selected: #3a3a3a;
+    /* Backgrounds - semi-transparent for glass effect */
+    --dt-bg-primary: rgba(28, 28, 32, 0.45);
+    --dt-bg-secondary: rgba(18, 18, 22, 0.4);
+    --dt-bg-tertiary: rgba(50, 50, 55, 0.35);
+    --dt-bg-hover: rgba(60, 60, 65, 0.4);
+    --dt-bg-selected: rgba(50, 50, 58, 0.45);
 
-    /* Borders */
-    --dt-border-color: #404040;
-    --dt-border-color-strong: #525252;
+    /* Borders - glass edges */
+    --dt-border-color: rgba(255, 255, 255, 0.12);
+    --dt-border-color-strong: rgba(255, 255, 255, 0.2);
 
     /* Text */
     --dt-text-primary: #f9fafb;
@@ -120,29 +131,38 @@
     --dt-text-muted: #9ca3af;
     --dt-text-placeholder: #6b7280;
 
-    /* Shadows for dark mode */
-    --dt-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-    --dt-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-    --dt-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+    /* Shadows for dark mode - with inner glow highlight */
+    --dt-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+    --dt-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+    --dt-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
 
-    /* Dark mode tag colors (slightly muted) */
-    --dt-tag-gray-bg: #4b5563;
+    /* Glass overrides for dark mode */
+    --dt-glass-blur: 20px;
+    --dt-glass-bg: rgba(30, 30, 30, 0.55);
+    --dt-glass-bg-subtle: rgba(30, 30, 30, 0.35);
+    --dt-glass-border: rgba(255, 255, 255, 0.13);
+    --dt-glass-border-highlight: rgba(255, 255, 255, 0.22);
+    --dt-glass-inner-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+    --dt-glass-outer-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
+
+    /* Dark mode tag colors - semi-transparent */
+    --dt-tag-gray-bg: rgba(75, 85, 99, 0.45);
     --dt-tag-gray-text: #e5e7eb;
-    --dt-tag-red-bg: #7f1d1d;
+    --dt-tag-red-bg: rgba(127, 29, 29, 0.5);
     --dt-tag-red-text: #fecaca;
-    --dt-tag-orange-bg: #7c2d12;
+    --dt-tag-orange-bg: rgba(124, 45, 18, 0.5);
     --dt-tag-orange-text: #fed7aa;
-    --dt-tag-yellow-bg: #78350f;
+    --dt-tag-yellow-bg: rgba(120, 53, 15, 0.5);
     --dt-tag-yellow-text: #fef08a;
-    --dt-tag-green-bg: #14532d;
+    --dt-tag-green-bg: rgba(20, 83, 45, 0.5);
     --dt-tag-green-text: #bbf7d0;
-    --dt-tag-blue-bg: #1e3a8a;
+    --dt-tag-blue-bg: rgba(30, 58, 138, 0.5);
     --dt-tag-blue-text: #bfdbfe;
-    --dt-tag-purple-bg: #581c87;
+    --dt-tag-purple-bg: rgba(88, 28, 135, 0.5);
     --dt-tag-purple-text: #e9d5ff;
-    --dt-tag-pink-bg: #831843;
+    --dt-tag-pink-bg: rgba(131, 24, 67, 0.5);
     --dt-tag-pink-text: #fbcfe8;
-    --dt-tag-brown-bg: #78350f;
+    --dt-tag-brown-bg: rgba(120, 53, 15, 0.5);
     --dt-tag-brown-text: #fef3c7;
   }
 }
@@ -151,16 +171,16 @@
 
 .dark,
 [data-theme="dark"] {
-  /* Backgrounds - pure neutral grays */
-  --dt-bg-primary: #262626;
-  --dt-bg-secondary: #171717;
-  --dt-bg-tertiary: #404040;
-  --dt-bg-hover: #404040;
-  --dt-bg-selected: #3a3a3a;
+  /* Backgrounds - semi-transparent for glass effect */
+  --dt-bg-primary: rgba(38, 38, 38, 0.65);
+  --dt-bg-secondary: rgba(23, 23, 23, 0.55);
+  --dt-bg-tertiary: rgba(64, 64, 64, 0.45);
+  --dt-bg-hover: rgba(64, 64, 64, 0.5);
+  --dt-bg-selected: rgba(58, 58, 58, 0.55);
 
-  /* Borders */
-  --dt-border-color: #404040;
-  --dt-border-color-strong: #525252;
+  /* Borders - glass edges */
+  --dt-border-color: rgba(255, 255, 255, 0.08);
+  --dt-border-color-strong: rgba(255, 255, 255, 0.14);
 
   /* Text */
   --dt-text-primary: #f9fafb;
@@ -168,28 +188,37 @@
   --dt-text-muted: #9ca3af;
   --dt-text-placeholder: #6b7280;
 
-  /* Shadows for dark mode */
-  --dt-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --dt-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --dt-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  /* Shadows for dark mode - with inner glow highlight */
+  --dt-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  --dt-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  --dt-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
 
-  /* Dark mode tag colors */
-  --dt-tag-gray-bg: #4b5563;
+  /* Glass overrides for dark mode */
+  --dt-glass-blur: 20px;
+  --dt-glass-bg: rgba(30, 30, 30, 0.55);
+  --dt-glass-bg-subtle: rgba(30, 30, 30, 0.35);
+  --dt-glass-border: rgba(255, 255, 255, 0.1);
+  --dt-glass-border-highlight: rgba(255, 255, 255, 0.18);
+  --dt-glass-inner-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  --dt-glass-outer-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  /* Dark mode tag colors - semi-transparent */
+  --dt-tag-gray-bg: rgba(75, 85, 99, 0.45);
   --dt-tag-gray-text: #e5e7eb;
-  --dt-tag-red-bg: #7f1d1d;
+  --dt-tag-red-bg: rgba(127, 29, 29, 0.5);
   --dt-tag-red-text: #fecaca;
-  --dt-tag-orange-bg: #7c2d12;
+  --dt-tag-orange-bg: rgba(124, 45, 18, 0.5);
   --dt-tag-orange-text: #fed7aa;
-  --dt-tag-yellow-bg: #78350f;
+  --dt-tag-yellow-bg: rgba(120, 53, 15, 0.5);
   --dt-tag-yellow-text: #fef08a;
-  --dt-tag-green-bg: #14532d;
+  --dt-tag-green-bg: rgba(20, 83, 45, 0.5);
   --dt-tag-green-text: #bbf7d0;
-  --dt-tag-blue-bg: #1e3a8a;
+  --dt-tag-blue-bg: rgba(30, 58, 138, 0.5);
   --dt-tag-blue-text: #bfdbfe;
-  --dt-tag-purple-bg: #581c87;
+  --dt-tag-purple-bg: rgba(88, 28, 135, 0.5);
   --dt-tag-purple-text: #e9d5ff;
-  --dt-tag-pink-bg: #831843;
+  --dt-tag-pink-bg: rgba(131, 24, 67, 0.5);
   --dt-tag-pink-text: #fbcfe8;
-  --dt-tag-brown-bg: #78350f;
+  --dt-tag-brown-bg: rgba(120, 53, 15, 0.5);
   --dt-tag-brown-text: #fef3c7;
 }

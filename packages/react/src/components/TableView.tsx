@@ -85,6 +85,10 @@ export interface TableViewProps {
   /** Called when column alignment changes via context menu */
   onColumnAlignmentChange?: (columnId: string, alignment: TextAlignment) => void;
 
+  // Keyboard navigation
+  /** Enable keyboard cell navigation (arrow keys, Enter to edit, Tab to move). Defaults to true. */
+  enableKeyboardNav?: boolean;
+
   // Styling
   className?: string;
   style?: React.CSSProperties;
@@ -144,6 +148,7 @@ export function TableView({
   showFooter = true,
   borderConfig,
   onColumnAlignmentChange,
+  enableKeyboardNav = true,
   className,
   style,
 }: TableViewProps) {
@@ -192,6 +197,10 @@ export function TableView({
     columnId: string;
     position: { x: number; y: number };
   } | null>(null);
+  const [activeCell, setActiveCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
+  const [isEditingCell, setIsEditingCell] = useState(false);
+  const activeCellInitialized = useRef(false);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
 
@@ -467,10 +476,199 @@ export function TableView({
     }
   }, [newPropertyName, newPropertyType, onAddProperty]);
 
+  // Compute the visible data rows (flat list for keyboard nav)
+  const visibleDataRows = useMemo(() => {
+    if (isGrouped) {
+      const result: Row[] = [];
+      for (const group of groups) {
+        if (!group.isCollapsed) {
+          result.push(...group.rows);
+        }
+      }
+      return result;
+    }
+    return flattenedRows.map((f) => f.row);
+  }, [isGrouped, groups, flattenedRows]);
+
+  // Keyboard navigation handler
+  const handleKeyboardNav = useCallback(
+    (e: React.KeyboardEvent) => {
+      // Skip if typing in an input/textarea/contentEditable
+      const tag = (e.target as HTMLElement).tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable;
+
+      if (isEditingCell && isInput) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setIsEditingCell(false);
+          tableContainerRef.current?.focus();
+          return;
+        }
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          // Blur commits the current edit, then move
+          (e.target as HTMLElement).blur();
+          setIsEditingCell(false);
+          setActiveCell((prev) => {
+            if (!prev) return prev;
+            const maxC = orderedColumns.length - 1;
+            const maxR = visibleDataRows.length - 1;
+            if (e.shiftKey) {
+              if (prev.colIndex > 0) return { ...prev, colIndex: prev.colIndex - 1 };
+              if (prev.rowIndex > 0) return { rowIndex: prev.rowIndex - 1, colIndex: maxC };
+              return prev;
+            } else {
+              if (prev.colIndex < maxC) return { ...prev, colIndex: prev.colIndex + 1 };
+              if (prev.rowIndex < maxR) return { rowIndex: prev.rowIndex + 1, colIndex: 0 };
+              return prev;
+            }
+          });
+          tableContainerRef.current?.focus();
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          // Commit and move down
+          (e.target as HTMLElement).blur();
+          setIsEditingCell(false);
+          setActiveCell((prev) => {
+            if (!prev) return prev;
+            const maxR = visibleDataRows.length - 1;
+            return { ...prev, rowIndex: Math.min(maxR, prev.rowIndex + 1) };
+          });
+          tableContainerRef.current?.focus();
+          return;
+        }
+        // Arrow keys while editing: commit and navigate
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          (e.target as HTMLElement).blur();
+          setIsEditingCell(false);
+          setActiveCell((prev) => {
+            if (!prev) return prev;
+            const maxR = visibleDataRows.length - 1;
+            const newRow = e.key === 'ArrowUp' ? Math.max(0, prev.rowIndex - 1) : Math.min(maxR, prev.rowIndex + 1);
+            return { ...prev, rowIndex: newRow };
+          });
+          tableContainerRef.current?.focus();
+          return;
+        }
+        return; // Let other keys pass through to the input
+      }
+
+      const maxRow = visibleDataRows.length - 1;
+      const maxCol = orderedColumns.length - 1;
+
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          setActiveCell((prev) =>
+            prev ? { ...prev, rowIndex: Math.max(0, prev.rowIndex - 1) } : { rowIndex: 0, colIndex: 0 }
+          );
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          setActiveCell((prev) =>
+            prev ? { ...prev, rowIndex: Math.min(maxRow, prev.rowIndex + 1) } : { rowIndex: 0, colIndex: 0 }
+          );
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          setActiveCell((prev) =>
+            prev ? { ...prev, colIndex: Math.max(0, prev.colIndex - 1) } : { rowIndex: 0, colIndex: 0 }
+          );
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          setActiveCell((prev) =>
+            prev ? { ...prev, colIndex: Math.min(maxCol, prev.colIndex + 1) } : { rowIndex: 0, colIndex: 0 }
+          );
+          break;
+        case 'Tab':
+          e.preventDefault();
+          setActiveCell((prev) => {
+            if (!prev) return { rowIndex: 0, colIndex: 0 };
+            if (e.shiftKey) {
+              if (prev.colIndex > 0) return { ...prev, colIndex: prev.colIndex - 1 };
+              if (prev.rowIndex > 0) return { rowIndex: prev.rowIndex - 1, colIndex: maxCol };
+              return prev;
+            } else {
+              if (prev.colIndex < maxCol) return { ...prev, colIndex: prev.colIndex + 1 };
+              if (prev.rowIndex < maxRow) return { rowIndex: prev.rowIndex + 1, colIndex: 0 };
+              return prev;
+            }
+          });
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (activeCell && !readOnly) {
+            setIsEditingCell(true);
+            // Simulate a click on the cell content to trigger its internal editing mode
+            requestAnimationFrame(() => {
+              const cell = tableContainerRef.current?.querySelector('[data-cell-active="true"]');
+              if (!cell) return;
+              // First try clicking the display element (e.g. .dt-cell-text div)
+              const clickable = cell.querySelector('.dt-cell-text, .dt-cell-number, .dt-cell-date, .dt-cell-url, .dt-cell-select, .dt-cell-boolean input') as HTMLElement | null;
+              if (clickable) {
+                clickable.click();
+              }
+              // Then focus any input that appeared after the click
+              requestAnimationFrame(() => {
+                const input = cell.querySelector('input, textarea, [contenteditable]') as HTMLElement | null;
+                input?.focus();
+              });
+            });
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          setActiveCell(null);
+          setIsEditingCell(false);
+          break;
+        default:
+          break;
+      }
+    },
+    [activeCell, isEditingCell, visibleDataRows.length, orderedColumns.length, readOnly]
+  );
+
+  // Pre-select first cell when rows become available (only if keyboard nav enabled)
+  useEffect(() => {
+    if (enableKeyboardNav && !activeCellInitialized.current && visibleDataRows.length > 0 && orderedColumns.length > 0) {
+      activeCellInitialized.current = true;
+      setActiveCell({ rowIndex: 0, colIndex: 0 });
+    }
+  }, [enableKeyboardNav, visibleDataRows.length, orderedColumns.length]);
+
+  // When active cell changes: blur any focused input (commits edits) and scroll into view
+  useEffect(() => {
+    if (activeCell) {
+      // Blur any currently focused input to commit edits from the previous cell
+      const focused = document.activeElement as HTMLElement | null;
+      if (focused && tableContainerRef.current?.contains(focused) && focused !== tableContainerRef.current) {
+        focused.blur();
+      }
+      setIsEditingCell(false);
+      // Scroll active cell into view
+      requestAnimationFrame(() => {
+        const cell = tableContainerRef.current?.querySelector('[data-cell-active="true"]');
+        cell?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      });
+    }
+  }, [activeCell]);
+
+  const handleCellClick = useCallback(
+    (rowIndex: number, colIndex: number) => {
+      setActiveCell({ rowIndex, colIndex });
+      setIsEditingCell(false);
+    },
+    []
+  );
+
   const totalColumns = columns.length + (onSelectionChange ? 1 : 0) + (onDeleteRow ? 1 : 0) + (onAddProperty ? 1 : 0);
 
   // Helper function to render a single data row
-  const renderDataRow = (row: Row, depth: number, hasChildren: boolean) => {
+  const renderDataRow = (row: Row, depth: number, hasChildren: boolean, rowIndex?: number) => {
     const isExpanded = !localCollapsedParents.has(row.id);
     const indentPx = depth * 24; // 24px per nesting level
 
@@ -503,10 +701,14 @@ export function TableView({
           const isLastColumn = colIndex === orderedColumns.length - 1;
           const cellBorderStyles = getCellBorderStyles(isLastColumn);
           const alignment = column.alignment ?? getDefaultAlignment(column.type);
+          const isCellActive = enableKeyboardNav && activeCell !== null && rowIndex !== undefined && activeCell.rowIndex === rowIndex && activeCell.colIndex === colIndex;
 
           return (
             <td
               key={column.id}
+              data-cell-active={isCellActive || undefined}
+              onClick={enableKeyboardNav ? () => rowIndex !== undefined && handleCellClick(rowIndex, colIndex) : undefined}
+              className={isCellActive ? 'dt-cell-active' : undefined}
               style={{
                 width,
                 minWidth: width,
@@ -515,7 +717,7 @@ export function TableView({
                 textAlign: alignment,
                 verticalAlign: 'middle',
                 overflow: column.type === 'select' || column.type === 'multi_select' || column.type === 'file' || column.type === 'relation' ? 'visible' : 'hidden',
-                position: column.type === 'select' || column.type === 'multi_select' || column.type === 'file' || column.type === 'relation' ? 'relative' : undefined,
+                position: 'relative',
               }}
             >
               <div
@@ -684,7 +886,10 @@ export function TableView({
 
   return (
     <div
+      ref={tableContainerRef}
       className={`dt-table-view ${className ?? ''}`}
+      tabIndex={enableKeyboardNav ? 0 : undefined}
+      onKeyDown={enableKeyboardNav ? handleKeyboardNav : undefined}
       style={{
         border: (borderConfig?.showOuterBorder ?? true)
           ? `1px solid ${borderConfig?.borderColor ?? 'var(--dt-border-color-strong)'}`
@@ -693,6 +898,7 @@ export function TableView({
         position: 'relative',
         backgroundColor: 'var(--dt-bg-primary)',
         overflow: 'hidden',
+        outline: 'none',
         ...style,
       }}
     >
@@ -763,6 +969,22 @@ export function TableView({
         tr:hover .dt-add-subitem-btn:hover {
           color: var(--dt-text-secondary) !important;
           background-color: var(--dt-bg-hover);
+        }
+        /* Active cell highlight */
+        .dt-cell-active {
+          background-color: rgba(255, 255, 255, 0.04) !important;
+        }
+        .dt-cell-active::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border: 2px solid var(--dt-accent-primary);
+          border-radius: 2px;
+          pointer-events: none;
+          z-index: 1;
+        }
+        .dt-table-view:focus .dt-cell-active {
+          background-color: rgba(37, 99, 235, 0.06) !important;
         }
       `}</style>
       <div className="dt-table-scroll-container">
@@ -1032,22 +1254,28 @@ export function TableView({
             {/* Render rows - either grouped or flat/hierarchical */}
             {isGrouped ? (
               // Grouped rendering
-              groups.map((group) => (
-                <React.Fragment key={group.value}>
-                  <GroupHeader
-                    label={group.label}
-                    rowCount={group.rows.length}
-                    isCollapsed={group.isCollapsed}
-                    onToggleCollapse={() => handleToggleGroupCollapse(group.value)}
-                    colSpan={totalColumns}
-                  />
-                  {!group.isCollapsed && group.rows.map((row) => renderDataRow(row, 0, false))}
-                </React.Fragment>
-              ))
+              (() => {
+                let runningIndex = 0;
+                return groups.map((group) => (
+                  <React.Fragment key={group.value}>
+                    <GroupHeader
+                      label={group.label}
+                      rowCount={group.rows.length}
+                      isCollapsed={group.isCollapsed}
+                      onToggleCollapse={() => handleToggleGroupCollapse(group.value)}
+                      colSpan={totalColumns}
+                    />
+                    {!group.isCollapsed && group.rows.map((row) => {
+                      const idx = runningIndex++;
+                      return renderDataRow(row, 0, false, idx);
+                    })}
+                  </React.Fragment>
+                ));
+              })()
             ) : (
               // Flat or hierarchical rendering
-              flattenedRows.map(({ row, depth, hasChildren }) =>
-                renderDataRow(row, depth, hasChildren)
+              flattenedRows.map(({ row, depth, hasChildren }, idx) =>
+                renderDataRow(row, depth, hasChildren, idx)
               )
             )}
 

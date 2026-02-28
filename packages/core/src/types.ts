@@ -341,6 +341,7 @@ export interface UpdateColumnInput {
   name?: string;
   width?: number;
   config?: ColumnConfig;
+  alignment?: TextAlignment;
 }
 
 export interface UpdateSelectOptionInput {
