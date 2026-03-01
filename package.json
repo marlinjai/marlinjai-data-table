@@ -10,9 +10,12 @@
     "dev": "pnpm -r --if-present run dev",
     "typecheck": "pnpm -r --if-present run typecheck",
     "lint": "pnpm -r --if-present run lint",
-    "test": "pnpm -r --if-present run test"
+    "test": "pnpm -r --if-present run test",
+    "docs:dev": "clearify dev",
+    "docs:build": "clearify build"
   },
   "devDependencies": {
+    "@marlinjai/clearify": "^1.9.0",
     "typescript": "^5.3.3"
   }
 }
