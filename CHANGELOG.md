@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Migrated from npm workspaces to pnpm
+
 ## [0.3.0] - 2026-02-28
 
 ### Added
@@ -17,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SVG view icons** — ViewSwitcher now uses proper SVG icons for table, board, calendar, gallery, timeline, and list views
 - **Glass CSS variables** — New `--dt-glass-*` variables for blur, background, border, and shadow customization
 - **Custom checkbox styling** — Glass-themed checkboxes with `appearance: none` and animated check marks
+- **Floating glass group headers** — Group-by headers with `backdrop-filter` blur effect
+
+### Fixed
+
+- `crypto.randomUUID` fallback for non-secure contexts (HTTP, WebViews) — uses `Math.random` UUID v4 polyfill
+- Single-click to edit text, number, date, and URL cells — previously required double-click
+- `dist/` CSS paths added to package `exports` map for Turbopack compatibility
 
 ### Changed
 
@@ -35,10 +46,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `@marlinjai/data-table-adapter-data-brain` — HTTP-backed DatabaseAdapter using Data Brain SDK
   - Drop-in replacement for D1/memory adapters when running client-side
   - Delegates all 43 DatabaseAdapter methods to Data Brain API via SDK
+- **Auto-timestamp columns** — `created_time` and `last_edited_time` column types with automatic value management
+- **Footer calculations** — Sum, average, count, min, max, and more aggregate functions displayed in a table footer row
+- **Search within table** — Full-text search across all visible columns with highlight support
+- **Board view enhancements** — Drag-and-drop reorder, collapsible columns, hide/show columns, sorting, and row detail panel
+- **Text alignment** — Left/center/right alignment support on all cell components
+- **Border configuration** — Configurable table border styles via `borderConfig` prop
+- **Column alignment context menu** — Right-click column headers to set text alignment
 
 ### Fixed
 
 - `@marlinjai/data-table-adapter-d1` — Added missing `dt_views` table to initial migration
+- Footer calculations are now column-type aware — only applicable calculations shown per column type
+
+### Changed
+
+- Components refactored to use CSS variables for consistent theming
+- Dark theme updated to neutral gray palette
+- React peer dependency widened to include React 19
 
 ## [0.1.0] - 2026-01-11
 
