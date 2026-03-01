@@ -37,7 +37,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup && npm run copy-styles",
+    "build": "tsup && pnpm run copy-styles",
     "copy-styles": "mkdir -p dist/styles && cp src/styles/*.css dist/styles/",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit"

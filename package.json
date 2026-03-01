@@ -3,17 +3,14 @@
   "version": "0.3.0",
   "private": true,
   "description": "Notion-like data table component - monorepo",
-  "workspaces": [
-    "packages/*",
-    "demo"
-  ],
+  "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "build": "npm run build -w @marlinjai/data-table-core && npm run build -w @marlinjai/data-table-adapter-d1 && npm run build -w @marlinjai/data-table-adapter-memory && npm run build -w @marlinjai/data-table-react && npm run build -w @marlinjai/data-table-file-adapter-storage-brain && npm run build -w @marlinjai/data-table-adapter-data-brain",
-    "demo": "npm run dev -w data-table-demo",
-    "dev": "npm run dev --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "build": "pnpm --filter @marlinjai/data-table-core run build && pnpm --filter @marlinjai/data-table-adapter-d1 run build && pnpm --filter @marlinjai/data-table-adapter-memory run build && pnpm --filter @marlinjai/data-table-react run build && pnpm --filter @marlinjai/data-table-file-adapter-storage-brain run build && pnpm --filter @marlinjai/data-table-adapter-data-brain run build",
+    "demo": "pnpm --filter data-table-demo run dev",
+    "dev": "pnpm -r --if-present run dev",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "lint": "pnpm -r --if-present run lint",
+    "test": "pnpm -r --if-present run test"
   },
   "devDependencies": {
     "typescript": "^5.3.3"

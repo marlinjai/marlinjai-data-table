@@ -8,5 +8,6 @@ export default defineConfig({
     status: 'active',
     icon: '📊',
     tags: ['react', 'components'],
+    group: 'Libraries',
   },
 });
