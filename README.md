@@ -58,8 +58,6 @@ A **reusable, storage-agnostic Notion-like data table** React component library.
 ## Installation
 
 ```bash
-npm install @marlinjai/data-table-react @marlinjai/data-table-core
-# or
 pnpm add @marlinjai/data-table-react @marlinjai/data-table-core
 ```
 
