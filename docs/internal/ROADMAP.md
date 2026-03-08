@@ -1,3 +1,12 @@
+---
+title: Data Table Roadmap
+summary: Implementation status and planned features for the @marlinjai/data-table package, covering 13 column types, 3 of 6 views, database adapters, and future features like Gantt/timeline views.
+category: roadmap
+tags: [data-table, roadmap, features, column-types, views]
+projects: [data-table]
+status: active
+---
+
 # Roadmap
 
 This document outlines the current implementation status and planned features for the `@marlinjai/data-table` package.
