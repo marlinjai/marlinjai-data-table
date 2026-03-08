@@ -2,6 +2,11 @@
 title: API Reference
 description: Hooks, components, and type definitions
 order: 2
+summary: API reference for the data-table package covering React hooks (useTable, useRows), components, type definitions, and DatabaseAdapter interface.
+category: documentation
+tags: [data-table, api-reference, hooks, components]
+projects: [data-table]
+status: active
 ---
 
 # API Reference
@@ -183,102 +188,6 @@ Filter controls for the table.
 | `onFiltersChange` | `(filters) => void` | Yes | Filter change handler |
 
 ---
-
-## Types
-
-### Column
-
-```typescript
-interface Column {
-  id: string;
-  tableId: string;
-  name: string;
-  type: ColumnType;
-  position: number;
-  width: number;
-  isPrimary: boolean;
-  config?: Record<string, unknown>;
-}
-```
-
-### ColumnType
-
-```typescript
-type ColumnType =
-  | 'text'
-  | 'number'
-  | 'date'
-  | 'boolean'
-  | 'select'
-  | 'multi_select'
-  | 'url'
-  | 'file'
-  | 'formula'
-  | 'relation'
-  | 'rollup';
-```
-
-### Row
-
-```typescript
-interface Row {
-  id: string;
-  tableId: string;
-  cells: Record<string, CellValue>;
-}
-```
-
-### CellValue
-
-```typescript
-type CellValue =
-  | string
-  | number
-  | boolean
-  | string[]  // multi_select
-  | null;
-```
-
-### SelectOption
-
-```typescript
-interface SelectOption {
-  id: string;
-  columnId: string;
-  name: string;
-  color?: string;
-  position: number;
-}
-```
-
-### QueryFilter
-
-```typescript
-interface QueryFilter {
-  columnId: string;
-  operator: FilterOperator;
-  value: CellValue;
-}
-
-type FilterOperator =
-  | 'equals'
-  | 'notEquals'
-  | 'contains'
-  | 'notContains'
-  | 'greaterThan'
-  | 'lessThan'
-  | 'isEmpty'
-  | 'isNotEmpty';
-```
-
-### QuerySort
-
-```typescript
-interface QuerySort {
-  columnId: string;
-  direction: 'asc' | 'desc';
-}
-```
 
 ### useViews
 
@@ -635,7 +544,9 @@ type ColumnType =
   | 'file'
   | 'formula'
   | 'relation'
-  | 'rollup';
+  | 'rollup'
+  | 'created_time'
+  | 'last_edited_time';
 ```
 
 ### FormulaColumnConfig
@@ -1032,8 +943,8 @@ engine.clearCache(): void
 The formula engine includes many built-in functions including:
 
 - **Math:** `abs`, `ceil`, `floor`, `round`, `sqrt`, `pow`, `min`, `max`
-- **String:** `concat`, `length`, `lower`, `upper`, `trim`, `substring`, `replace`, `contains`
-- **Date:** `now`, `today`, `dateAdd`, `dateSub`, `year`, `month`, `day`
+- **String:** `concat`, `length`, `lower`, `upper`, `trim`, `slice`, `replace`, `contains`
+- **Date:** `now`, `today`, `dateAdd`, `dateSubtract`, `year`, `month`, `day`
 - **Logic:** `if`, `and`, `or`, `not`, `empty`, `coalesce`
 
 ---

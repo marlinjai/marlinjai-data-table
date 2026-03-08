@@ -39,3 +39,6 @@ pnpm-lock.yaml
 # Misc
 .cache/
 .temp/
+
+#docs
+docs-dist/  

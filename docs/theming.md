@@ -2,6 +2,11 @@
 title: Theming
 description: CSS variables, dark mode, and component styling
 order: 3
+summary: Theming guide for the data-table component covering CSS variables, dark mode support, and component styling customization.
+category: documentation
+tags: [data-table, theming, css-variables, dark-mode]
+projects: [data-table]
+status: active
 ---
 
 # Theming Guide

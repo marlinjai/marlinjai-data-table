@@ -2,6 +2,11 @@
 title: Grouping
 description: Group rows by select columns into collapsible sections
 order: 4
+summary: Documentation for the data-table grouping feature, which groups rows by select or multi-select column values into collapsible sections.
+category: documentation
+tags: [data-table, grouping, select-columns, collapsible]
+projects: [data-table]
+status: active
 ---
 
 # Grouping

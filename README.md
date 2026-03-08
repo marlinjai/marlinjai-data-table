@@ -1,3 +1,12 @@
+---
+title: Data Table
+summary: README for the Data Table library, a reusable, storage-agnostic Notion-like React component library with inline editing, formula engine, rollups, relations, multiple views (table, board, calendar), sub-items, and CSS theming.
+category: documentation
+tags: [data-table, react, notion, component-library, database]
+status: active
+date: 2026-01-11
+---
+
 # @marlinjai/data-table
 
 A **reusable, storage-agnostic Notion-like data table** React component library.
@@ -5,10 +14,10 @@ A **reusable, storage-agnostic Notion-like data table** React component library.
 ## Features
 
 - **Notion-like UX** - Inline editing, sorting, filtering, column management
-- **Storage-agnostic** - Pluggable adapters for D1, Supabase, PostgreSQL
+- **Storage-agnostic** - Pluggable adapters for D1, Data Brain, in-memory
 - **Fully themeable** - CSS variables with dark mode support
 - **TypeScript-first** - Full type safety
-- **Formula Engine** - Computed columns with 50+ built-in functions
+- **Formula Engine** - Computed columns with 65 built-in functions
 - **Rollups** - Aggregate data from related tables with 14 aggregation types
 - **Relations** - Link rows across tables with an intuitive picker UI
 - **Multiple Views** - Table, Board (Kanban), and Calendar views
@@ -31,7 +40,7 @@ A **reusable, storage-agnostic Notion-like data table** React component library.
 - [x] Rollup (14 aggregation types)
 - [ ] Status (workflow stages)
 - [ ] Person (user assignment)
-- [ ] Created time / Last edited time
+- [x] Created time / Last edited time
 
 ### Views
 - [x] Table view
@@ -107,10 +116,12 @@ function MyTable() {
 | `relation` | Link to rows in another table |
 | `rollup` | Aggregate values from related rows |
 | `formula` | Computed values using formulas |
+| `created_time` | Auto-populated row creation timestamp |
+| `last_edited_time` | Auto-populated last edit timestamp |
 
 ## Formula Engine
 
-Create computed columns with powerful formulas. The formula engine includes a recursive descent parser, AST caching for performance, and 50+ built-in functions.
+Create computed columns with powerful formulas. The formula engine includes a recursive descent parser, AST caching for performance, and 65 built-in functions.
 
 **Example formulas:**
 
@@ -203,7 +214,7 @@ Use the `useViews` hook and `ViewSwitcher` component to manage views:
 import { useViews, ViewSwitcher } from '@marlinjai/data-table-react';
 
 function MyTable() {
-  const { views, activeView, createView, switchView, updateView, deleteView } = useViews({
+  const { views, currentView, createView, setCurrentView, updateView, deleteView } = useViews({
     tableId: 'my-table',
   });
 
@@ -211,8 +222,8 @@ function MyTable() {
     <>
       <ViewSwitcher
         views={views}
-        activeView={activeView}
-        onSwitch={switchView}
+        currentView={currentView}
+        onSwitch={setCurrentView}
         onCreate={createView}
       />
       {/* Render active view */}

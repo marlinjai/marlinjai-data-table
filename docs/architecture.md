@@ -2,6 +2,11 @@
 title: Architecture
 description: System design, patterns, and package structure
 order: 1
+summary: Architecture documentation for the @marlinjai/data-table package covering system design, adapter pattern, package structure, and core/react/adapter layering.
+category: documentation
+tags: [data-table, architecture, adapter-pattern, monorepo]
+projects: [data-table]
+status: active
 ---
 
 # Architecture
@@ -19,7 +24,7 @@ This document describes the architecture of the `@marlinjai/data-table` package.
 │   │   │   ├── db-adapter.ts    # DatabaseAdapter interface
 │   │   │   ├── formula/         # Formula Engine
 │   │   │   │   ├── FormulaParser.ts     # Lexer + recursive descent parser
-│   │   │   │   ├── FormulaFunctions.ts  # 50+ built-in functions
+│   │   │   │   ├── FormulaFunctions.ts  # 65 built-in functions
 │   │   │   │   ├── FormulaEngine.ts     # AST evaluation with caching
 │   │   │   │   └── index.ts
 │   │   │   ├── rollup/          # Rollup Engine
@@ -41,7 +46,9 @@ This document describes the architecture of the `@marlinjai/data-table` package.
 │   │   └── package.json
 │   │
 │   ├── adapter-memory/          # In-memory adapter
-│   └── adapter-d1/              # Cloudflare D1 adapter
+│   ├── adapter-d1/              # Cloudflare D1 adapter
+│   ├── adapter-data-brain/      # Data Brain HTTP adapter
+│   └── file-adapter-storage-brain/ # Storage Brain file adapter
 │
 └── demo/                        # Demo application
 ```
@@ -60,14 +67,14 @@ The package uses the **Adapter Pattern** to decouple data storage from the UI la
                                │
               ┌────────────────┼────────────────┐
               ▼                ▼                ▼
-       ┌──────────┐     ┌──────────┐     ┌──────────┐
-       │  Memory  │     │    D1    │     │ Supabase │
-       │ Adapter  │     │ Adapter  │     │ Adapter  │
-       └──────────┘     └──────────┘     └──────────┘
+       ┌──────────┐     ┌──────────┐     ┌────────────┐
+       │  Memory  │     │    D1    │     │ Data Brain │
+       │ Adapter  │     │ Adapter  │     │  Adapter   │
+       └──────────┘     └──────────┘     └────────────┘
 ```
 
 **Benefits:**
-- Test with in-memory adapter, deploy with D1/Supabase
+- Test with in-memory adapter, deploy with D1/Data Brain
 - Easy to add new storage backends
 - No storage logic in UI components
 
@@ -211,7 +218,7 @@ The Formula Engine (`packages/core/src/formula/`) provides Notion-like formula e
                                                           ▼
                                                   ┌──────────────────┐
                                                   │ FormulaFunctions │
-                                                  │  (50+ built-ins) │
+                                                  │  (65 built-ins) │
                                                   └──────────────────┘
 ```
 
@@ -220,7 +227,7 @@ The Formula Engine (`packages/core/src/formula/`) provides Notion-like formula e
 | File | Responsibility |
 |------|----------------|
 | `FormulaParser.ts` | Lexer (tokenizer) + recursive descent parser producing AST |
-| `FormulaFunctions.ts` | Registry of 50+ built-in functions (math, text, logic, date) |
+| `FormulaFunctions.ts` | Registry of 65 built-in functions (math, text, logic, date) |
 | `FormulaEngine.ts` | AST evaluation with caching and custom function support |
 
 ### Design Pattern: Visitor Pattern
@@ -342,7 +349,7 @@ type ViewType = 'table' | 'board' | 'calendar' | 'gallery' | 'timeline' | 'list'
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                       Storage Backend                            │
-│           (Memory, D1, Supabase, etc.)                          │
+│           (Memory, D1, Data Brain, etc.)                         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

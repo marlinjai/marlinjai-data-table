@@ -64,7 +64,7 @@ This document outlines the current implementation status and planned features fo
 
 | Engine | Status | Details |
 |--------|--------|---------|
-| Formula Engine | Complete | Lexer, recursive descent parser, AST evaluation, 50+ built-in functions |
+| Formula Engine | Complete | Lexer, recursive descent parser, AST evaluation, 65 built-in functions |
 | Rollup Engine | Complete | 14 aggregation types (count, sum, avg, min, max, etc.) |
 
 ### Database Adapters

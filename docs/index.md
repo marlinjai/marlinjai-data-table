@@ -1,7 +1,12 @@
 ---
 title: Data Table
-description: Notion-like database component with adapters for D1, Supabase, and more
+description: Notion-like database component with adapters for D1, Data Brain, and more
 order: 0
+summary: Landing page for the @marlinjai/data-table documentation, a Notion-like database component with adapters for D1, in-memory, Data Brain, and Storage Brain file adapter.
+category: documentation
+tags: [data-table, index, notion-like, database-component]
+projects: [data-table]
+status: active
 ---
 
 # Data Table Documentation
@@ -64,7 +69,8 @@ The data table is **storage-agnostic**. You provide an adapter that implements t
 
 - `MemoryAdapter` - In-memory storage (for testing/demos)
 - `D1Adapter` - Cloudflare D1
-- `SupabaseAdapter` - Supabase (planned)
+- `DataBrainAdapter` - Data Brain HTTP adapter
+- `StorageBrainFileAdapter` - Storage Brain file adapter
 
 ### Column Types
 
@@ -139,18 +145,17 @@ const authorColumn = {
   name: 'Author',
   type: 'relation',
   config: {
-    relatedTableId: 'authors-table',
-    relationType: 'many-to-one'  // or 'one-to-many', 'many-to-many'
+    targetTableId: 'authors-table',
+    limitType: 'single'  // 'single' or 'multiple'
   }
 };
 ```
 
-**Relation types:**
+**Limit types:**
 | Type | Description |
 |------|-------------|
-| `many-to-one` | Multiple rows link to one related row |
-| `one-to-many` | One row links to multiple related rows |
-| `many-to-many` | Multiple rows link to multiple related rows |
+| `single` | Link to one related row |
+| `multiple` | Link to multiple related rows |
 
 ### Rollup Columns
 
@@ -178,7 +183,7 @@ const totalSalesColumn = {
 | `count` | Count of related rows |
 | `min` | Minimum value |
 | `max` | Maximum value |
-| `count_values` | Count of non-empty values |
+| `countValues` | Count of non-empty values |
 
 ## Views
 
@@ -198,7 +203,7 @@ The view system allows multiple visualizations of the same data. Each table can 
 import { useViews } from '@marlinjai/data-table-react';
 
 function MyTableWithViews() {
-  const { views, activeView, createView, switchView } = useViews({ tableId: 'my-table' });
+  const { views, currentView, createView, setCurrentView } = useViews({ tableId: 'my-table' });
 
   const handleCreateBoardView = async () => {
     await createView({
@@ -217,8 +222,8 @@ function MyTableWithViews() {
         {views.map(view => (
           <button
             key={view.id}
-            onClick={() => switchView(view.id)}
-            className={activeView?.id === view.id ? 'active' : ''}
+            onClick={() => setCurrentView(view.id)}
+            className={currentView?.id === view.id ? 'active' : ''}
           >
             {view.name}
           </button>
@@ -247,12 +252,11 @@ function ProjectBoard() {
     <BoardView
       columns={columns}
       rows={rows}
-      groupByColumnId="status"        // Column to group by
-      onCellChange={updateCell}
-      onCardMove={(rowId, newValue) => {
-        // Handle card drag-and-drop between columns
-        updateCell(rowId, 'status', newValue);
+      config={{
+        groupByColumnId: 'status',     // Column to group by
+        cardProperties: ['assignee', 'due-date'],
       }}
+      onCellChange={updateCell}        // Also handles drag-and-drop moves
     />
   );
 }
@@ -272,26 +276,25 @@ The Calendar View displays rows on a calendar based on date column values.
 import { CalendarView } from '@marlinjai/data-table-react';
 
 function EventCalendar() {
-  const { columns, rows, updateCell } = useTable({ tableId: 'events' });
+  const { columns, rows } = useTable({ tableId: 'events' });
 
   return (
     <CalendarView
       columns={columns}
       rows={rows}
-      dateColumnId="event-date"       // Column containing dates
-      titleColumnId="event-name"      // Column for event titles
-      onDateChange={(rowId, newDate) => {
-        // Handle event drag to new date
-        updateCell(rowId, 'event-date', newDate);
+      config={{
+        dateColumnId: 'event-date',       // Column containing dates
+        endDateColumnId: 'event-end',     // Optional: for multi-day events
       }}
-      defaultView="month"             // 'month', 'week', or 'day'
+      onRowClick={(row) => console.log('Clicked event', row.id)}
+      onDayClick={(date, events) => console.log('Clicked day', date)}
     />
   );
 }
 ```
 
 **Calendar View features:**
-- Month, week, and day views
-- Drag-and-drop events to reschedule
-- Color coding by category
-- Event duration with start/end dates
+- Month grid with prev/next/today navigation
+- Multi-day event spanning with start/end dates
+- Visual distinction for current day and out-of-month days
+- Event and day click handlers

@@ -13,14 +13,16 @@ packages/
 ├── core/           # Types, interfaces, engines (no React dependency)
 ├── react/          # React components, hooks, providers
 ├── adapter-memory/ # In-memory adapter for testing/demos
-├── adapter-d1/     # Cloudflare D1 adapter (planned)
+├── adapter-d1/     # Cloudflare D1 adapter
+├── adapter-data-brain/          # Data Brain HTTP adapter
+├── file-adapter-storage-brain/  # Storage Brain file adapter
 └── demo/           # Demo app for development
 ```
 
 ## Key Patterns
 
 ### Adapter Pattern
-- **DatabaseAdapter**: Interface for data persistence (Memory, D1, Supabase)
+- **DatabaseAdapter**: Interface for data persistence (Memory, D1, Data Brain)
 - **FileStorageAdapter**: Interface for file uploads (Storage Brain, S3)
 - Adapters are injected via `DataTableProvider`
 
@@ -84,10 +86,10 @@ packages/
 | `select` | `string` (option ID) | Single select |
 | `multi_select` | `string[]` (option IDs) | Multiple select |
 | `url` | `string` | URL with optional preview |
-| `file` | `FileReference[]` | File attachments (planned) |
+| `file` | `FileReference[]` | File attachments |
 | `formula` | computed | Computed values from formulas |
 | `rollup` | computed | Aggregated values from related rows |
-| `relation` | `string[]` (row IDs) | Links to rows in other tables |
+| `relation` | `RelationValue[]` (`{ rowId: string; displayValue?: string }`) | Links to rows in other tables |
 
 ## Development Commands
 
@@ -110,7 +112,7 @@ pnpm dev
 | Purpose | Location |
 |---------|----------|
 | Core types | `packages/core/src/types.ts` |
-| Database adapter interface | `packages/core/src/adapter.ts` |
+| Database adapter interface | `packages/core/src/db-adapter.ts` |
 | Formula engine | `packages/core/src/formula/` |
 | Rollup engine | `packages/core/src/rollup/` |
 | React components | `packages/react/src/components/` |
