@@ -1,12 +1,3 @@
----
-title: Data Table Changelog
-summary: Version history for the Data Table component library, covering releases from v0.1.0 through v0.3.0 including Liquid Glass UI, keyboard navigation, Data Brain adapter, board view enhancements, and footer calculations.
-category: changelog
-tags: [data-table, changelog, releases, react]
-status: active
-date: 2026-02-28
----
-
 # Changelog
 
 All notable changes to this project will be documented in this file.

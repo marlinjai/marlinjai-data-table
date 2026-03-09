@@ -1,12 +1,3 @@
----
-title: Data Table
-summary: README for the Data Table library, a reusable, storage-agnostic Notion-like React component library with inline editing, formula engine, rollups, relations, multiple views (table, board, calendar), sub-items, and CSS theming.
-category: documentation
-tags: [data-table, react, notion, component-library, database]
-status: active
-date: 2026-01-11
----
-
 # @marlinjai/data-table
 
 A **reusable, storage-agnostic Notion-like data table** React component library.
