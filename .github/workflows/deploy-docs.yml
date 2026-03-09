@@ -26,6 +26,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - name: Install docs dependencies only
+        run: pnpm install --filter "@marlinjai/data-table-monorepo" --no-frozen-lockfile
       - run: pnpm exec clearify build
       - run: npx wrangler pages deploy docs-dist --project-name=data-table-docs
