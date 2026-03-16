@@ -9,6 +9,8 @@ import { Prisma, type PrismaClient } from '@prisma/client';
 import type { InputJsonValue } from '@prisma/client/runtime/library';
 import {
   BaseDatabaseAdapter,
+  FormulaEngine,
+  RollupEngine,
   type Table,
   type Column,
   type Row,
@@ -33,6 +35,9 @@ import {
   type ColumnConfig,
   type DatabaseAdapter,
   type ColumnType,
+  type FormulaColumnConfig,
+  type RollupColumnConfig,
+  type RelationColumnConfig,
 } from '@marlinjai/data-table-core';
 
 import {
@@ -69,10 +74,14 @@ export interface PrismaAdapterConfig {
 
 export class PrismaAdapter extends BaseDatabaseAdapter {
   private prisma: PrismaClient;
+  private formulaEngine: FormulaEngine;
+  private rollupEngine: RollupEngine;
 
   constructor(config: PrismaAdapterConfig) {
     super();
     this.prisma = config.prisma;
+    this.formulaEngine = new FormulaEngine({ throwOnError: false });
+    this.rollupEngine = new RollupEngine();
   }
 
   // =========================================================================
@@ -457,6 +466,9 @@ export class PrismaAdapter extends BaseDatabaseAdapter {
         mergeSelections([mappedRow], selections);
         mergeRelations([mappedRow], relations);
 
+        // Compute formulas and rollups
+        await this.computeFormulasAndRollups([mappedRow], columns);
+
         return mappedRow;
       }
     }
@@ -539,6 +551,9 @@ export class PrismaAdapter extends BaseDatabaseAdapter {
         mergeRelations(rows, relations);
       }
     }
+
+    // Compute formulas and rollups
+    await this.computeFormulasAndRollups(rows, columns);
 
     return {
       items: rows,
@@ -888,6 +903,62 @@ export class PrismaAdapter extends BaseDatabaseAdapter {
 
   async transaction<T>(fn: (tx: DatabaseAdapter) => Promise<T>): Promise<T> {
     return fn(this);
+  }
+
+  // =========================================================================
+  // Formula & Rollup Computation (private)
+  // =========================================================================
+
+  /**
+   * Compute formula and rollup columns for a set of rows.
+   * Formulas are computed in-app via FormulaEngine.
+   * Rollups are computed via RollupEngine after fetching related rows.
+   */
+  private async computeFormulasAndRollups(
+    rows: Row[],
+    columns: Column[],
+  ): Promise<void> {
+    const formulaColumns = columns.filter((c) => c.type === 'formula');
+    const rollupColumns = columns.filter((c) => c.type === 'rollup');
+
+    // Compute formulas
+    if (formulaColumns.length > 0) {
+      for (const row of rows) {
+        for (const fc of formulaColumns) {
+          const config = fc.config as FormulaColumnConfig | undefined;
+          if (config?.formula) {
+            row.cells[fc.id] = this.formulaEngine.evaluate(config.formula, row, columns);
+          }
+        }
+      }
+    }
+
+    // Compute rollups
+    if (rollupColumns.length > 0) {
+      for (const rc of rollupColumns) {
+        const config = rc.config as RollupColumnConfig | undefined;
+        if (!config) continue;
+
+        // Get the relation column to find the target table
+        const relationColumn = columns.find((c) => c.id === config.relationColumnId);
+        if (!relationColumn) continue;
+
+        const relationConfig = relationColumn.config as RelationColumnConfig | undefined;
+        if (!relationConfig?.targetTableId) continue;
+
+        // Get target columns for the rollup
+        const targetColumns = await this.getColumns(relationConfig.targetTableId);
+        const targetColumn = targetColumns.find((c) => c.id === config.targetColumnId);
+        if (!targetColumn) continue;
+
+        for (const row of rows) {
+          const relatedRows = await this.getRelatedRows(row.id, config.relationColumnId);
+          const rollupResult = this.rollupEngine.calculate(config, relatedRows, targetColumn);
+          // RollupResult can be number | CellValue[] | null — coerce to CellValue
+          row.cells[rc.id] = rollupResult as CellValue;
+        }
+      }
+    }
   }
 
   // =========================================================================
