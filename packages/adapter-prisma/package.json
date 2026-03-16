@@ -1,0 +1,53 @@
+{
+  "name": "@marlinjai/data-table-adapter-prisma",
+  "version": "0.1.0",
+  "description": "Prisma-based PostgreSQL adapter for data-table with real table columns",
+  "author": "marlinjai",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marlinjai/marlinjai-data-table.git",
+    "directory": "packages/adapter-prisma"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "prisma"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prisma:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@marlinjai/data-table-core": "workspace:*",
+    "@marlinjai/data-table-adapter-shared": "workspace:*",
+    "@prisma/client": "^6.9.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.9.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "vitest": "^3.0.0"
+  }
+}
