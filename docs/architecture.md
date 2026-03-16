@@ -1,12 +1,13 @@
 ---
 title: Architecture
-description: System design, patterns, and package structure
+description: System design, patterns, storage architecture, and package structure
 order: 1
-summary: Architecture documentation for the @marlinjai/data-table package covering system design, adapter pattern, package structure, and core/react/adapter layering.
+summary: Architecture documentation for the @marlinjai/data-table package covering system design, adapter pattern, real-table storage, package structure, and core/react/adapter layering.
 category: documentation
-tags: [data-table, architecture, adapter-pattern, monorepo]
-projects: [data-table]
+tags: [data-table, architecture, adapter-pattern, monorepo, real-tables, prisma]
+projects: [data-table, data-brain]
 status: active
+date: 2026-03-16
 ---
 
 # Architecture
@@ -18,39 +19,72 @@ This document describes the architecture of the `@marlinjai/data-table` package.
 ```
 @marlinjai/data-table/
 ├── packages/
-│   ├── core/                    # Core types, interfaces, engines
+│   ├── core/                         # Core types, interfaces, engines
 │   │   ├── src/
-│   │   │   ├── types.ts         # All TypeScript interfaces
-│   │   │   ├── db-adapter.ts    # DatabaseAdapter interface
-│   │   │   ├── formula/         # Formula Engine
-│   │   │   │   ├── FormulaParser.ts     # Lexer + recursive descent parser
-│   │   │   │   ├── FormulaFunctions.ts  # 65 built-in functions
-│   │   │   │   ├── FormulaEngine.ts     # AST evaluation with caching
-│   │   │   │   └── index.ts
-│   │   │   ├── rollup/          # Rollup Engine
-│   │   │   │   ├── RollupEngine.ts      # Aggregation calculator
-│   │   │   │   └── index.ts
-│   │   │   └── index.ts
+│   │   │   ├── types.ts                # All TypeScript interfaces
+│   │   │   ├── db-adapter.ts           # DatabaseAdapter interface (41 methods)
+│   │   │   ├── formula/                # Formula Engine (65 built-in functions)
+│   │   │   └── rollup/                 # Rollup Engine (14 aggregation types)
 │   │   └── package.json
 │   │
-│   ├── react/                   # React components + hooks
+│   ├── adapter-shared/               # Shared adapter utilities
 │   │   ├── src/
-│   │   │   ├── providers/       # DataTableProvider
-│   │   │   ├── components/      # TableView, cells, filters
-│   │   │   │   └── views/       # View-specific components
-│   │   │   │       ├── ViewSwitcher.tsx  # View tab navigation
-│   │   │   │       ├── BoardView.tsx     # Kanban board view
-│   │   │   │       └── CalendarView.tsx  # Calendar grid view
-│   │   │   ├── hooks/           # useTable, useColumns, useViews
-│   │   │   └── styles/          # CSS variables + base styles
+│   │   │   ├── identifiers.ts          # SQL identifier sanitization
+│   │   │   ├── type-mapping.ts         # Column type → storage mapping
+│   │   │   ├── query-builder.ts        # WHERE/ORDER BY with CAST expressions
+│   │   │   ├── ddl-capabilities.ts     # Database feature matrix
+│   │   │   ├── schema-verify.ts        # Metadata ↔ table drift detection
+│   │   │   └── batch-loader.ts         # Junction data batch loading
 │   │   └── package.json
 │   │
-│   ├── adapter-memory/          # In-memory adapter
-│   ├── adapter-d1/              # Cloudflare D1 adapter
-│   ├── adapter-data-brain/      # Data Brain HTTP adapter
-│   └── file-adapter-storage-brain/ # Storage Brain file adapter
+│   ├── adapter-prisma/               # PostgreSQL adapter (real table columns)
+│   │   ├── prisma/schema.prisma        # Metadata table definitions
+│   │   ├── src/
+│   │   │   ├── adapter.ts              # PrismaAdapter (41 methods)
+│   │   │   ├── ddl.ts                  # CREATE/DROP TABLE, ADD/DROP COLUMN
+│   │   │   └── migration.ts            # Lazy JSON → real table migration
+│   │   └── package.json
+│   │
+│   ├── adapter-d1/                   # Cloudflare D1 adapter (edge SQLite)
+│   │   ├── src/
+│   │   │   ├── index.ts                # D1Adapter (41 methods)
+│   │   │   ├── ddl-compat.ts           # Table-rebuild fallback for D1
+│   │   │   └── migration.ts            # Lazy migration for D1
+│   │   └── package.json
+│   │
+│   ├── adapter-memory/               # In-memory adapter (testing)
+│   ├── adapter-data-brain/           # HTTP adapter (SDK → Data Brain API)
+│   │
+│   ├── react/                        # React components + hooks
+│   │   ├── src/
+│   │   │   ├── providers/              # DataTableProvider
+│   │   │   ├── components/             # TableView, cells, filters
+│   │   │   │   └── views/              # ViewSwitcher, BoardView, CalendarView
+│   │   │   ├── hooks/                  # useTable, useColumns, useViews
+│   │   │   └── styles/                 # CSS variables + base styles
+│   │   └── package.json
+│   │
+│   └── file-adapter-storage-brain/   # Storage Brain file adapter
 │
-└── demo/                        # Demo application
+└── demo/                             # Demo application
+```
+
+### Dependency Graph
+
+```
+                      data-table-core
+                     /      |       \
+                    /       |        \
+           adapter-shared   |    react (UI)
+            /       \       |
+           /         \      |
+    adapter-prisma  adapter-d1    adapter-memory
+           \         /
+            \       /
+        data-brain API  ←──  data-brain SDK
+                                    │
+                            adapter-data-brain
+                            (HTTP adapter for client apps)
 ```
 
 ## Design Patterns
@@ -62,20 +96,27 @@ The package uses the **Adapter Pattern** to decouple data storage from the UI la
 ```
 ┌─────────────────┐     ┌───────────────────┐
 │   React Layer   │────▶│  DatabaseAdapter  │
-│  (components)   │     │    (interface)    │
+│  (components)   │     │   (41 methods)    │
 └─────────────────┘     └───────────────────┘
                                │
-              ┌────────────────┼────────────────┐
-              ▼                ▼                ▼
-       ┌──────────┐     ┌──────────┐     ┌────────────┐
-       │  Memory  │     │    D1    │     │ Data Brain │
-       │ Adapter  │     │ Adapter  │     │  Adapter   │
-       └──────────┘     └──────────┘     └────────────┘
+          ┌────────────────┬───┴───────┬────────────────┐
+          ▼                ▼           ▼                ▼
+   ┌────────────┐   ┌──────────┐  ┌──────────┐  ┌────────────┐
+   │   Prisma   │   │    D1    │  │  Memory  │  │ Data Brain │
+   │ (Postgres) │   │  (Edge)  │  │ (Testing)│  │   (HTTP)   │
+   └─────┬──────┘   └────┬─────┘  └──────────┘  └────────────┘
+         │                │
+         └──────┬─────────┘
+                ▼
+         ┌──────────────┐
+         │adapter-shared│  (identifiers, type mapping,
+         │  (utilities) │   query builder, DDL, schema verify)
+         └──────────────┘
 ```
 
 **Benefits:**
-- Test with in-memory adapter, deploy with D1/Data Brain
-- Easy to add new storage backends
+- Test with in-memory adapter, deploy with Prisma/D1/Data Brain
+- All adapters share code via `adapter-shared`
 - No storage logic in UI components
 
 ### Component Hierarchy
@@ -130,44 +171,141 @@ Local State Update (optimistic or after response)
 React Re-render
 ```
 
-## Database Schema
+## Storage Architecture: Real Table Columns
 
-The adapter operates on these entities:
+The adapter stores each user column as a real TEXT column in a per-table SQL table, not as a JSON blob. This enables proper indexing, type-aware filtering, and atomic updates.
 
-### Tables
+### How Data Is Stored
+
+Each data-table "table" becomes a real SQL table with the table ID as its name:
+
+```
+Metadata tables (shared):              Per-table real table:
+┌─────────────┐                        ┌──────────────────────────────────────┐
+│ dt_tables   │                        │ tbl_abc123                           │
+│ dt_columns  │  ←── describes ───→    │ id | _archived | col_name | col_age │
+│ dt_views    │                        │ r1 | 0         | John     | 42      │
+└─────────────┘                        │ r2 | 0         | Jane     | 28      │
+                                       └──────────────────────────────────────┘
+Junction tables (shared):
+┌─────────────────────┐
+│ dt_row_select_values │  ← multi_select values
+│ dt_relations         │  ← row-to-row links
+│ dt_files             │  ← file references
+└─────────────────────┘
+```
+
+### Column Type to Storage Mapping
+
+| Column Type | Storage | Cast for Filter/Sort |
+|-------------|---------|---------------------|
+| text, url, select | TEXT column (as-is) | none |
+| number | TEXT column (`"42"`) | `::NUMERIC` (PG) / `CAST(AS REAL)` (SQLite) |
+| date, created_time, last_edited_time | TEXT column (ISO 8601) | `::TIMESTAMPTZ` (PG) / text sort (SQLite) |
+| boolean | TEXT column (`"true"/"false"`) | none (lexicographic works) |
+| multi_select | `dt_row_select_values` junction table | JOIN query |
+| relation | `dt_relations` junction table | JOIN query |
+| file | `dt_files` junction table | JOIN query |
+| formula | Not stored — computed post-query by FormulaEngine | N/A |
+| rollup | Not stored — computed post-query by RollupEngine | N/A |
+
+**Why TEXT for everything?** Column type changes (e.g., number → text) become metadata-only — no DDL, no data migration. Expression indexes close the performance gap.
+
+### SQL Identifier Safety
+
+All table/column names come from system-generated IDs, validated by regex before use in SQL:
+
+```typescript
+safeTableName("tbl_abc123")   // → "tbl_abc123" (validated)
+safeColumnName("col_abc123")  // → "col_abc123" (validated)
+safeTableName("'; DROP --")   // → throws Error
+```
+
+Filter/sort column IDs are additionally validated against actual table columns to prevent injection.
+
+### Row Query Flow (End to End)
+
+```
+1. adapter.getRows(tableId, { filters, sorts, include })
+2. Check migration status (lazy-migrate if needed)
+3. Build SQL via adapter-shared:
+   SELECT * FROM tbl_abc123
+   WHERE _archived = 0 AND (col_age)::NUMERIC > $1
+   ORDER BY (col_age)::NUMERIC ASC
+   LIMIT 50
+4. Map raw rows: deserializeCell("42", 'number') → 42
+5. Eager-load junction data if include is set (batch queries, no N+1)
+6. Compute formulas and rollups post-query
+7. Return { items, total, hasMore, cursor }
+```
+
+### Row Update Flow
+
+```
+-- Single atomic UPDATE (no read-merge-write race condition)
+UPDATE tbl_abc123 SET col_name = $1, col_age = $2, _updated_at = $3 WHERE id = $4
+```
+
+### The `include` Parameter
+
+Junction data is not included by default in `getRows()`. Opt in with `include`:
+
+```typescript
+const result = await adapter.getRows(tableId, {
+  include: ['files', 'relations', 'multiSelect']
+});
+// row.cells now contains file refs, relation values, and multi-select arrays
+```
+
+`getRow()` (single row) always eager-loads all junction data.
+
+### Adapter Comparison
+
+| | PrismaAdapter | D1Adapter | MemoryAdapter | DataBrainAdapter |
+|---|---|---|---|---|
+| **Database** | PostgreSQL | Cloudflare D1 | In-memory | HTTP → API |
+| **Storage** | Real TEXT columns | JSON blobs (upgrade in progress) | JS objects | Delegates |
+| **Transactions** | Full ACID | D1 batch | Sync | Server-side |
+| **Filter casting** | `::NUMERIC` | `CAST(AS REAL)` | JS comparison | Server-side |
+| **Use case** | Production | Edge | Testing | Client apps |
+
+### Lazy Migration
+
+Tables using JSON blobs migrate to real columns on first access:
+
+1. Check `dt_tables.migrated` flag
+2. If `false`: CREATE real table, copy data from `dt_rows`, mark migrated
+3. Original `dt_rows` data preserved for rollback
+
+### Database Entities
+
 ```typescript
 interface Table {
   id: string;
   workspaceId: string;
   name: string;
   icon?: string;
+  migrated?: boolean; // true = real table columns, false = JSON blobs
 }
-```
 
-### Columns
-```typescript
 interface Column {
   id: string;
   tableId: string;
   name: string;
-  type: ColumnType;
+  type: ColumnType; // determines storage strategy
   position: number;
   width: number;
-  config?: Record<string, unknown>;
+  config?: ColumnConfig;
 }
-```
 
-### Rows
-```typescript
 interface Row {
   id: string;
   tableId: string;
-  cells: Record<string, CellValue>; // columnId -> value
+  parentRowId?: string;
+  cells: Record<string, CellValue>; // adapter translates to/from real columns
+  archived: boolean;
 }
-```
 
-### Select Options
-```typescript
 interface SelectOption {
   id: string;
   columnId: string;
