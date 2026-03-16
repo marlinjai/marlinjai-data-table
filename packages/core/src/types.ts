@@ -149,6 +149,7 @@ export interface Table {
   name: string;
   description?: string;
   icon?: string;
+  migrated?: boolean; // true when migrated from JSON blobs to real table columns
   createdAt: Date;
   updatedAt: Date;
 }
@@ -229,6 +230,8 @@ export interface RelationValue {
 // Query Types
 // =============================================================================
 
+export type IncludeOption = 'files' | 'relations' | 'multiSelect';
+
 export interface QueryOptions {
   filters?: QueryFilter[];
   sorts?: QuerySort[];
@@ -239,6 +242,8 @@ export interface QueryOptions {
   // Sub-items filtering
   parentRowId?: string | null; // null = top-level only, undefined = all, string = children of parent
   includeSubItems?: boolean; // Include all sub-items recursively
+  // Eager-load junction table data (files, relations, multi_select)
+  include?: IncludeOption[];
 }
 
 export interface QueryFilter {
