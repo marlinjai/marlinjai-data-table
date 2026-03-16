@@ -60,9 +60,12 @@ importers:
 
   packages/adapter-d1:
     dependencies:
+      '@marlinjai/data-table-adapter-shared':
+        specifier: workspace:*
+        version: link:../adapter-shared
       '@marlinjai/data-table-core':
-        specifier: '*'
-        version: 0.2.0
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20240117.0
