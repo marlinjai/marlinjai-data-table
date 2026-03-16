@@ -5,7 +5,7 @@ A **reusable, storage-agnostic Notion-like data table** React component library.
 ## Features
 
 - **Notion-like UX** - Inline editing, sorting, filtering, column management
-- **Storage-agnostic** - Pluggable adapters for D1, Data Brain, in-memory
+- **Storage-agnostic** - Pluggable adapters for PostgreSQL (Prisma), D1, Data Brain, in-memory
 - **Fully themeable** - CSS variables with dark mode support
 - **TypeScript-first** - Full type safety
 - **Formula Engine** - Computed columns with 65 built-in functions

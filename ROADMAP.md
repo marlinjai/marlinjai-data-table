@@ -63,7 +63,9 @@ This document outlines the current implementation status and planned features fo
 | Adapter | Status | Description |
 |---------|--------|-------------|
 | Memory | Complete | In-memory for testing/demos |
-| D1 | Complete | Cloudflare SQLite |
+| D1 | Complete | Cloudflare SQLite (JSON blobs, real-table upgrade in progress) |
+| Prisma (PostgreSQL) | Complete | Real table columns, transactional DDL, lazy migration |
+| Adapter Shared | Complete | Shared utilities (identifiers, type mapping, query builder, DDL) |
 | Storage Brain File | Complete | File storage integration |
 
 ---

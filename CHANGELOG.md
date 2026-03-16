@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`@marlinjai/data-table-adapter-shared`** — New shared utilities package for database adapters
+  - Identifier sanitization (`safeTableName`, `safeColumnName`, `validateIdentifier`)
+  - Type mapping between column types and SQL storage (`serializeCell`, `deserializeCell`)
+  - Query builder with CAST expressions for PostgreSQL and SQLite (`buildWhereClause`, `buildOrderBy`)
+  - DDL capability detection for PostgreSQL, SQLite, and D1
+  - Schema self-healing (verify and repair metadata/table drift)
+  - Batch loading utilities for junction table data (files, relations, multi-select)
+- **`@marlinjai/data-table-adapter-prisma`** — New Prisma-based PostgreSQL adapter with real table columns
+  - All 41 `DatabaseAdapter` methods implemented
+  - Stores scalar cell values as TEXT columns in per-table SQL tables (not JSON blobs)
+  - Type-aware filtering and sorting with CAST expressions
+  - Eager loading via `include` parameter (files, relations, multiSelect)
+  - Transactional DDL (CREATE TABLE, ALTER TABLE ADD/DROP COLUMN)
+  - Lazy per-table migration from JSON blobs to real columns
+  - Formula computation via FormulaEngine (post-query)
+  - Rollup computation via RollupEngine (SQL JOIN + aggregate)
+- **`include` on `QueryOptions`** — Optional `include: ('files' | 'relations' | 'multiSelect')[]` for eager-loading junction table data in `getRows()`
+- **`migrated` on `Table`** — Boolean flag indicating whether a table has been migrated from JSON blobs to real columns
+- **D1 adapter DDL compatibility** — Table-rebuild fallback for DROP COLUMN on D1, lazy migration module
+
 ### Changed
 
 - Migrated from npm workspaces to pnpm
