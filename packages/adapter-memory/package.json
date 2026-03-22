@@ -1,6 +1,6 @@
 {
   "name": "@marlinjai/data-table-adapter-memory",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "In-memory adapter for @marlinjai/data-table (testing/demos)",
   "author": "marlinjai",
   "license": "MIT",

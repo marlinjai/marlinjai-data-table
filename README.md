@@ -50,8 +50,8 @@ A **reusable, storage-agnostic Notion-like data table** React component library.
 - [x] Sub-items (hierarchical rows)
 - [x] Row selection
 - [x] Dark mode
-- [ ] Footer calculations
-- [ ] Search
+- [x] Footer calculations
+- [x] Search
 - [ ] Undo/redo
 - [ ] Export/Import
 

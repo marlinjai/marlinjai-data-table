@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-22
+
 ### Added
 
 - **`@marlinjai/data-table-adapter-shared`** — New shared utilities package for database adapters
@@ -29,9 +31,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`migrated` on `Table`** — Boolean flag indicating whether a table has been migrated from JSON blobs to real columns
 - **D1 adapter DDL compatibility** — Table-rebuild fallback for DROP COLUMN on D1, lazy migration module
 
+### Fixed
+
+- **PrismaAdapter ghost column bug** — Removed duplicate `addColumn` call in `createColumn` that created orphan SQL columns with random temp IDs
+
 ### Changed
 
 - Migrated from npm workspaces to pnpm
+- Root build script now includes `adapter-shared` and `adapter-prisma`
 
 ## [0.3.0] - 2026-02-28
 
