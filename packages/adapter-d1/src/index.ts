@@ -2,6 +2,7 @@
  * @marlinjai/data-table-adapter-d1
  *
  * Cloudflare D1 adapter for @marlinjai/data-table
+ * Uses real SQL columns in per-table tables (tbl_<id>) instead of JSON blobs.
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
@@ -31,13 +32,25 @@ import {
   type ColumnConfig,
   type DatabaseAdapter,
 } from '@marlinjai/data-table-core';
+import {
+  safeTableName,
+  safeColumnName,
+  isScalarType,
+  serializeCell,
+  deserializeCell,
+  buildWhereClause,
+  buildOrderBy,
+} from '@marlinjai/data-table-adapter-shared';
+import { createRealTableD1, dropRealTableD1, addColumnD1, dropColumnD1 } from './ddl-compat.js';
+import { ensureRealTableD1 } from './migration.js';
+
+// ---------------------------------------------------------------------------
+// D1 raw row interfaces
+// ---------------------------------------------------------------------------
 
 interface D1Row {
   id: string;
   table_id: string;
-  cells: string;
-  computed: string | null;
-  _title: string | null;
   _archived: number;
   _created_at: string;
   _updated_at: string;
@@ -49,6 +62,7 @@ interface D1Table {
   name: string;
   description: string | null;
   icon: string | null;
+  migrated: number;
   created_at: string;
   updated_at: string;
 }
@@ -106,9 +120,32 @@ interface D1View {
   updated_at: string;
 }
 
+// A real-table row — id + metadata columns plus arbitrary TEXT user columns
+type RealTableRow = D1Row & Record<string, string | number | null>;
+
 export class D1Adapter extends BaseDatabaseAdapter {
   constructor(private db: D1Database) {
     super();
+  }
+
+  // =========================================================================
+  // Private helpers
+  // =========================================================================
+
+  /**
+   * Returns a Map<columnId, Column> for all columns belonging to a table.
+   */
+  private async getColumnMap(tableId: string): Promise<Map<string, Column>> {
+    const result = await this.db
+      .prepare('SELECT * FROM dt_columns WHERE table_id = ? ORDER BY position ASC')
+      .bind(tableId)
+      .all<D1Column>();
+
+    const map = new Map<string, Column>();
+    for (const row of result.results) {
+      map.set(row.id, this.mapColumn(row));
+    }
+    return map;
   }
 
   // =========================================================================
@@ -121,11 +158,14 @@ export class D1Adapter extends BaseDatabaseAdapter {
 
     await this.db
       .prepare(
-        `INSERT INTO dt_tables (id, workspace_id, name, description, icon, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO dt_tables (id, workspace_id, name, description, icon, migrated, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?)`
       )
       .bind(id, input.workspaceId, input.name, input.description ?? null, input.icon ?? null, now, now)
       .run();
+
+    // Create the real (empty) per-table SQL table immediately
+    await createRealTableD1(this.db, id, []);
 
     return {
       id,
@@ -174,7 +214,9 @@ export class D1Adapter extends BaseDatabaseAdapter {
   }
 
   async deleteTable(tableId: string): Promise<void> {
-    // Cascade delete is handled by foreign keys, but we delete explicitly for clarity
+    // Drop real table first, then cascade-delete metadata
+    await dropRealTableD1(this.db, tableId);
+
     await this.db.batch([
       this.db.prepare('DELETE FROM dt_files WHERE row_id IN (SELECT id FROM dt_rows WHERE table_id = ?)').bind(tableId),
       this.db.prepare('DELETE FROM dt_relations WHERE source_row_id IN (SELECT id FROM dt_rows WHERE table_id = ?)').bind(tableId),
@@ -230,6 +272,11 @@ export class D1Adapter extends BaseDatabaseAdapter {
         now
       )
       .run();
+
+    // Add a real SQL column for scalar types
+    if (isScalarType(input.type)) {
+      await addColumnD1(this.db, input.tableId, id);
+    }
 
     return {
       id,
@@ -288,6 +335,13 @@ export class D1Adapter extends BaseDatabaseAdapter {
   }
 
   async deleteColumn(columnId: string): Promise<void> {
+    // Fetch column metadata so we know type + tableId before deleting
+    const column = await this.getColumn(columnId);
+
+    if (column && isScalarType(column.type)) {
+      await dropColumnD1(this.db, column.tableId, columnId);
+    }
+
     await this.db.batch([
       this.db.prepare('DELETE FROM dt_select_options WHERE column_id = ?').bind(columnId),
       this.db.prepare('DELETE FROM dt_files WHERE column_id = ?').bind(columnId),
@@ -403,12 +457,37 @@ export class D1Adapter extends BaseDatabaseAdapter {
     const now = new Date().toISOString();
     const cells = input.cells ?? {};
 
+    // Ensure real table exists (lazy migrate legacy tables)
+    await ensureRealTableD1(this.db, input.tableId);
+
+    const columnsMap = await this.getColumnMap(input.tableId);
+    const tableName = safeTableName(input.tableId);
+
+    // Build column list and values for the real table INSERT
+    const colNames: string[] = ['id', '_archived', '_created_at', '_updated_at'];
+    const placeholders: string[] = ['?', '?', '?', '?'];
+    const values: (string | number | null)[] = [id, 0, now, now];
+
+    for (const [colId, column] of columnsMap) {
+      if (!isScalarType(column.type)) continue;
+      colNames.push(safeColumnName(colId));
+      placeholders.push('?');
+      values.push(serializeCell(cells[colId] ?? null, column.type));
+    }
+
+    // Insert into real table
+    await this.db
+      .prepare(`INSERT INTO ${tableName} (${colNames.join(', ')}) VALUES (${placeholders.join(', ')})`)
+      .bind(...values)
+      .run();
+
+    // Keep dt_rows as metadata/index (no cells column)
     await this.db
       .prepare(
-        `INSERT INTO dt_rows (id, table_id, cells, computed, _title, _archived, _created_at, _updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO dt_rows (id, table_id, _archived, _created_at, _updated_at)
+         VALUES (?, ?, ?, ?, ?)`
       )
-      .bind(id, input.tableId, JSON.stringify(cells), null, null, 0, now, now)
+      .bind(id, input.tableId, 0, now, now)
       .run();
 
     return {
@@ -423,117 +502,163 @@ export class D1Adapter extends BaseDatabaseAdapter {
   }
 
   async getRow(rowId: string): Promise<Row | null> {
-    const result = await this.db.prepare('SELECT * FROM dt_rows WHERE id = ?').bind(rowId).first<D1Row>();
+    // Look up the tableId from the dt_rows index
+    const meta = await this.db
+      .prepare('SELECT id, table_id, _archived, _created_at, _updated_at FROM dt_rows WHERE id = ?')
+      .bind(rowId)
+      .first<D1Row>();
 
-    if (!result) return null;
-    return this.mapRow(result);
+    if (!meta) return null;
+
+    const tableId = meta.table_id;
+    await ensureRealTableD1(this.db, tableId);
+
+    const tableName = safeTableName(tableId);
+    const realRow = await this.db
+      .prepare(`SELECT * FROM ${tableName} WHERE id = ?`)
+      .bind(rowId)
+      .first<RealTableRow>();
+
+    if (!realRow) return null;
+
+    const columnsMap = await this.getColumnMap(tableId);
+    const cells = this.extractCells(realRow, columnsMap);
+
+    return {
+      id: realRow.id,
+      tableId,
+      cells,
+      computed: {},
+      archived: realRow._archived === 1,
+      createdAt: new Date(realRow._created_at),
+      updatedAt: new Date(realRow._updated_at),
+    };
   }
 
   async getRows(tableId: string, query?: QueryOptions): Promise<QueryResult<Row>> {
-    let sql = 'SELECT * FROM dt_rows WHERE table_id = ?';
-    const params: (string | number | boolean)[] = [tableId];
+    await ensureRealTableD1(this.db, tableId);
 
-    // Handle archived filter
+    const columnsMap = await this.getColumnMap(tableId);
+    const tableName = safeTableName(tableId);
+
+    // Base conditions
+    const baseConditions: string[] = [];
+    const baseParams: unknown[] = [];
+
     if (!query?.includeArchived) {
-      sql += ' AND _archived = 0';
+      baseConditions.push('_archived = 0');
     }
 
-    // Handle filters
+    // Filter clause from adapter-shared
+    let filterClause = '';
+    let filterParams: unknown[] = [];
     if (query?.filters && query.filters.length > 0) {
-      for (const filter of query.filters) {
-        const { columnId, operator, value } = filter;
-        // For JSON cell values, we use json_extract
-        const jsonPath = `json_extract(cells, '$.${columnId}')`;
-
-        switch (operator) {
-          case 'equals':
-            sql += ` AND ${jsonPath} = ?`;
-            params.push(value as string | number);
-            break;
-          case 'notEquals':
-            sql += ` AND ${jsonPath} != ?`;
-            params.push(value as string | number);
-            break;
-          case 'contains':
-            sql += ` AND ${jsonPath} LIKE ?`;
-            params.push(`%${value}%`);
-            break;
-          case 'isEmpty':
-            sql += ` AND (${jsonPath} IS NULL OR ${jsonPath} = '')`;
-            break;
-          case 'isNotEmpty':
-            sql += ` AND ${jsonPath} IS NOT NULL AND ${jsonPath} != ''`;
-            break;
-          case 'greaterThan':
-            sql += ` AND CAST(${jsonPath} AS REAL) > ?`;
-            params.push(value as number);
-            break;
-          case 'lessThan':
-            sql += ` AND CAST(${jsonPath} AS REAL) < ?`;
-            params.push(value as number);
-            break;
-          // Add more operators as needed
-        }
-      }
+      const result = buildWhereClause(query.filters, columnsMap, 'sqlite', 1);
+      filterClause = result.clause !== '1=1' ? result.clause : '';
+      filterParams = result.params;
     }
 
-    // Handle sorting
-    if (query?.sorts && query.sorts.length > 0) {
-      const sortClauses = query.sorts.map((sort) => {
-        const jsonPath = `json_extract(cells, '$.${sort.columnId}')`;
-        return `${jsonPath} ${sort.direction.toUpperCase()}`;
-      });
-      sql += ` ORDER BY ${sortClauses.join(', ')}`;
-    } else {
-      sql += ' ORDER BY _created_at DESC';
-    }
+    const allConditions = [
+      ...baseConditions,
+      ...(filterClause ? [filterClause] : []),
+    ];
+    const whereClause = allConditions.length > 0 ? `WHERE ${allConditions.join(' AND ')}` : '';
+    const allParams = [...baseParams, ...filterParams];
 
-    // Get total count
+    // ORDER BY
+    const orderBy = buildOrderBy(query?.sorts ?? [], columnsMap, 'sqlite');
+
+    // Count
     const countResult = await this.db
-      .prepare(`SELECT COUNT(*) as count FROM dt_rows WHERE table_id = ?${!query?.includeArchived ? ' AND _archived = 0' : ''}`)
-      .bind(tableId)
+      .prepare(`SELECT COUNT(*) as count FROM ${tableName} ${whereClause}`)
+      .bind(...allParams)
       .first<{ count: number }>();
     const total = countResult?.count ?? 0;
 
-    // Handle pagination
+    // Pagination
     const limit = query?.limit ?? 50;
     const offset = query?.offset ?? 0;
-    sql += ` LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
 
-    const result = await this.db.prepare(sql).bind(...params).all<D1Row>();
+    const rows = await this.db
+      .prepare(`SELECT * FROM ${tableName} ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
+      .bind(...allParams, limit, offset)
+      .all<RealTableRow>();
+
+    const items = rows.results.map((row) => ({
+      id: row.id,
+      tableId,
+      cells: this.extractCells(row, columnsMap),
+      computed: {},
+      archived: row._archived === 1,
+      createdAt: new Date(row._created_at),
+      updatedAt: new Date(row._updated_at),
+    }));
 
     return {
-      items: result.results.map((row) => this.mapRow(row)),
+      items,
       total,
-      hasMore: offset + result.results.length < total,
-      cursor: offset + result.results.length < total ? String(offset + limit) : undefined,
+      hasMore: offset + items.length < total,
+      cursor: offset + items.length < total ? String(offset + limit) : undefined,
     };
   }
 
   async updateRow(rowId: string, cells: Record<string, CellValue>): Promise<Row> {
     const now = new Date().toISOString();
 
-    // Get existing row
-    const existing = await this.getRow(rowId);
-    if (!existing) throw new Error('Row not found');
+    // Get metadata row to find tableId
+    const meta = await this.db
+      .prepare('SELECT id, table_id, _archived, _created_at, _updated_at FROM dt_rows WHERE id = ?')
+      .bind(rowId)
+      .first<D1Row>();
+    if (!meta) throw new Error('Row not found');
 
-    // Merge cells
-    const mergedCells = { ...existing.cells, ...cells };
+    const tableId = meta.table_id;
+    await ensureRealTableD1(this.db, tableId);
 
+    const columnsMap = await this.getColumnMap(tableId);
+    const tableName = safeTableName(tableId);
+
+    // Build SET clause for scalar columns present in the cells update
+    const setClauses: string[] = ['_updated_at = ?'];
+    const setValues: (string | number | null)[] = [now];
+
+    for (const [colId, column] of columnsMap) {
+      if (!isScalarType(column.type)) continue;
+      if (!(colId in cells)) continue;
+      setClauses.push(`${safeColumnName(colId)} = ?`);
+      setValues.push(serializeCell(cells[colId], column.type));
+    }
+
+    // Update real table
     await this.db
-      .prepare('UPDATE dt_rows SET cells = ?, _updated_at = ? WHERE id = ?')
-      .bind(JSON.stringify(mergedCells), now, rowId)
+      .prepare(`UPDATE ${tableName} SET ${setClauses.join(', ')} WHERE id = ?`)
+      .bind(...setValues, rowId)
       .run();
 
-    return {
-      ...existing,
-      cells: mergedCells,
-      updatedAt: new Date(now),
-    };
+    // Update dt_rows metadata timestamp
+    await this.db
+      .prepare('UPDATE dt_rows SET _updated_at = ? WHERE id = ?')
+      .bind(now, rowId)
+      .run();
+
+    // Re-read the full row to return accurate merged state
+    const updated = await this.getRow(rowId);
+    if (!updated) throw new Error('Row not found after update');
+    return updated;
   }
 
   async deleteRow(rowId: string): Promise<void> {
+    // We need tableId to delete from real table
+    const meta = await this.db
+      .prepare('SELECT table_id FROM dt_rows WHERE id = ?')
+      .bind(rowId)
+      .first<{ table_id: string }>();
+
+    if (meta) {
+      const tableName = safeTableName(meta.table_id);
+      await this.db.prepare(`DELETE FROM ${tableName} WHERE id = ?`).bind(rowId).run();
+    }
+
     await this.db.batch([
       this.db.prepare('DELETE FROM dt_files WHERE row_id = ?').bind(rowId),
       this.db.prepare('DELETE FROM dt_relations WHERE source_row_id = ? OR target_row_id = ?').bind(rowId, rowId),
@@ -543,46 +668,134 @@ export class D1Adapter extends BaseDatabaseAdapter {
 
   async archiveRow(rowId: string): Promise<void> {
     const now = new Date().toISOString();
-    await this.db.prepare('UPDATE dt_rows SET _archived = 1, _updated_at = ? WHERE id = ?').bind(now, rowId).run();
+
+    const meta = await this.db
+      .prepare('SELECT table_id FROM dt_rows WHERE id = ?')
+      .bind(rowId)
+      .first<{ table_id: string }>();
+
+    if (meta) {
+      const tableName = safeTableName(meta.table_id);
+      await this.db
+        .prepare(`UPDATE ${tableName} SET _archived = 1, _updated_at = ? WHERE id = ?`)
+        .bind(now, rowId)
+        .run();
+    }
+
+    await this.db
+      .prepare('UPDATE dt_rows SET _archived = 1, _updated_at = ? WHERE id = ?')
+      .bind(now, rowId)
+      .run();
   }
 
   async unarchiveRow(rowId: string): Promise<void> {
     const now = new Date().toISOString();
-    await this.db.prepare('UPDATE dt_rows SET _archived = 0, _updated_at = ? WHERE id = ?').bind(now, rowId).run();
+
+    const meta = await this.db
+      .prepare('SELECT table_id FROM dt_rows WHERE id = ?')
+      .bind(rowId)
+      .first<{ table_id: string }>();
+
+    if (meta) {
+      const tableName = safeTableName(meta.table_id);
+      await this.db
+        .prepare(`UPDATE ${tableName} SET _archived = 0, _updated_at = ? WHERE id = ?`)
+        .bind(now, rowId)
+        .run();
+    }
+
+    await this.db
+      .prepare('UPDATE dt_rows SET _archived = 0, _updated_at = ? WHERE id = ?')
+      .bind(now, rowId)
+      .run();
   }
 
   async bulkCreateRows(inputs: CreateRowInput[]): Promise<Row[]> {
+    if (inputs.length === 0) return [];
+
     const now = new Date().toISOString();
     const rows: Row[] = [];
 
-    const statements = inputs.map((input) => {
+    // Group inputs by tableId so we can batch per table
+    const byTable = new Map<string, Array<{ input: CreateRowInput; id: string }>>();
+    for (const input of inputs) {
       const id = this.generateId();
-      const cells = input.cells ?? {};
+      if (!byTable.has(input.tableId)) byTable.set(input.tableId, []);
+      byTable.get(input.tableId)!.push({ input, id });
       rows.push({
         id,
         tableId: input.tableId,
-        cells,
+        cells: input.cells ?? {},
         computed: {},
         archived: false,
         createdAt: new Date(now),
         updatedAt: new Date(now),
       });
-      return this.db
-        .prepare(
-          `INSERT INTO dt_rows (id, table_id, cells, computed, _title, _archived, _created_at, _updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        )
-        .bind(id, input.tableId, JSON.stringify(cells), null, null, 0, now, now);
-    });
+    }
 
-    await this.db.batch(statements);
+    for (const [tableId, entries] of byTable) {
+      await ensureRealTableD1(this.db, tableId);
+      const columnsMap = await this.getColumnMap(tableId);
+      const tableName = safeTableName(tableId);
+
+      const realInserts = entries.map(({ input, id }) => {
+        const cells = input.cells ?? {};
+        const colNames: string[] = ['id', '_archived', '_created_at', '_updated_at'];
+        const placeholders: string[] = ['?', '?', '?', '?'];
+        const values: (string | number | null)[] = [id, 0, now, now];
+
+        for (const [colId, column] of columnsMap) {
+          if (!isScalarType(column.type)) continue;
+          colNames.push(safeColumnName(colId));
+          placeholders.push('?');
+          values.push(serializeCell(cells[colId] ?? null, column.type));
+        }
+
+        return this.db
+          .prepare(`INSERT INTO ${tableName} (${colNames.join(', ')}) VALUES (${placeholders.join(', ')})`)
+          .bind(...values);
+      });
+
+      const metaInserts = entries.map(({ input, id }) =>
+        this.db
+          .prepare(
+            `INSERT INTO dt_rows (id, table_id, _archived, _created_at, _updated_at)
+             VALUES (?, ?, ?, ?, ?)`
+          )
+          .bind(id, input.tableId, 0, now, now)
+      );
+
+      await this.db.batch([...realInserts, ...metaInserts]);
+    }
+
     return rows;
   }
 
   async bulkDeleteRows(rowIds: string[]): Promise<void> {
     if (rowIds.length === 0) return;
 
+    // Look up tableIds for all rows
     const placeholders = rowIds.map(() => '?').join(', ');
+    const metas = await this.db
+      .prepare(`SELECT id, table_id FROM dt_rows WHERE id IN (${placeholders})`)
+      .bind(...rowIds)
+      .all<{ id: string; table_id: string }>();
+
+    // Group by table
+    const byTable = new Map<string, string[]>();
+    for (const meta of metas.results) {
+      if (!byTable.has(meta.table_id)) byTable.set(meta.table_id, []);
+      byTable.get(meta.table_id)!.push(meta.id);
+    }
+
+    // Delete from real tables
+    for (const [tableId, ids] of byTable) {
+      const tableName = safeTableName(tableId);
+      const ph = ids.map(() => '?').join(', ');
+      await this.db.prepare(`DELETE FROM ${tableName} WHERE id IN (${ph})`).bind(...ids).run();
+    }
+
+    // Delete metadata
     await this.db.batch([
       this.db.prepare(`DELETE FROM dt_files WHERE row_id IN (${placeholders})`).bind(...rowIds),
       this.db.prepare(`DELETE FROM dt_relations WHERE source_row_id IN (${placeholders}) OR target_row_id IN (${placeholders})`).bind(...rowIds, ...rowIds),
@@ -595,7 +808,34 @@ export class D1Adapter extends BaseDatabaseAdapter {
 
     const now = new Date().toISOString();
     const placeholders = rowIds.map(() => '?').join(', ');
-    await this.db.prepare(`UPDATE dt_rows SET _archived = 1, _updated_at = ? WHERE id IN (${placeholders})`).bind(now, ...rowIds).run();
+
+    // Look up tableIds
+    const metas = await this.db
+      .prepare(`SELECT id, table_id FROM dt_rows WHERE id IN (${placeholders})`)
+      .bind(...rowIds)
+      .all<{ id: string; table_id: string }>();
+
+    const byTable = new Map<string, string[]>();
+    for (const meta of metas.results) {
+      if (!byTable.has(meta.table_id)) byTable.set(meta.table_id, []);
+      byTable.get(meta.table_id)!.push(meta.id);
+    }
+
+    // Archive in real tables
+    for (const [tableId, ids] of byTable) {
+      const tableName = safeTableName(tableId);
+      const ph = ids.map(() => '?').join(', ');
+      await this.db
+        .prepare(`UPDATE ${tableName} SET _archived = 1, _updated_at = ? WHERE id IN (${ph})`)
+        .bind(now, ...ids)
+        .run();
+    }
+
+    // Update dt_rows metadata
+    await this.db
+      .prepare(`UPDATE dt_rows SET _archived = 1, _updated_at = ? WHERE id IN (${placeholders})`)
+      .bind(now, ...rowIds)
+      .run();
   }
 
   // =========================================================================
@@ -632,10 +872,9 @@ export class D1Adapter extends BaseDatabaseAdapter {
     if (relations.results.length === 0) return [];
 
     const targetIds = relations.results.map((r) => r.target_row_id);
-    const placeholders = targetIds.map(() => '?').join(', ');
-    const rows = await this.db.prepare(`SELECT * FROM dt_rows WHERE id IN (${placeholders})`).bind(...targetIds).all<D1Row>();
-
-    return rows.results.map((row) => this.mapRow(row));
+    return Promise.all(targetIds.map((id) => this.getRow(id))).then(
+      (results) => results.filter((r): r is Row => r !== null)
+    );
   }
 
   async getRelationsForRow(rowId: string): Promise<Array<{ columnId: string; targetRowId: string }>> {
@@ -928,18 +1167,6 @@ export class D1Adapter extends BaseDatabaseAdapter {
     };
   }
 
-  private mapRow(row: D1Row): Row {
-    return {
-      id: row.id,
-      tableId: row.table_id,
-      cells: JSON.parse(row.cells) as Record<string, CellValue>,
-      computed: row.computed ? (JSON.parse(row.computed) as Record<string, CellValue>) : {},
-      archived: row._archived === 1,
-      createdAt: new Date(row._created_at),
-      updatedAt: new Date(row._updated_at),
-    };
-  }
-
   private mapView(row: D1View): View {
     return {
       id: row.id,
@@ -952,6 +1179,21 @@ export class D1Adapter extends BaseDatabaseAdapter {
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
     };
+  }
+
+  /**
+   * Extract cell values from a real-table row using the column map.
+   * Deserializes TEXT storage back to typed JS values.
+   */
+  private extractCells(row: RealTableRow, columnsMap: Map<string, Column>): Record<string, CellValue> {
+    const cells: Record<string, CellValue> = {};
+    for (const [colId, column] of columnsMap) {
+      if (!isScalarType(column.type)) continue;
+      const colName = safeColumnName(colId);
+      const raw = row[colName];
+      cells[colId] = deserializeCell(raw != null ? String(raw) : null, column.type);
+    }
+    return cells;
   }
 }
 
