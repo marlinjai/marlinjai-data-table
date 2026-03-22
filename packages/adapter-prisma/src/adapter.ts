@@ -57,7 +57,7 @@ import {
   type BatchSelectResult,
 } from '@marlinjai/data-table-adapter-shared';
 
-import { createRealTable, dropRealTable, addColumn, dropColumn, atomicDDL } from './ddl.js';
+import { createRealTable, dropRealTable, addColumn, dropColumn } from './ddl.js';
 import { ensureRealTable } from './migration.js';
 
 /** Convert a value to Prisma-compatible JSON input (handles null properly) */
@@ -198,17 +198,6 @@ export class PrismaAdapter extends BaseDatabaseAdapter {
         _max: { position: true },
       });
       position = (maxPos._max.position ?? -1) + 1;
-    }
-
-    // For scalar types, also add a real SQL column
-    if (isScalarType(input.type)) {
-      await atomicDDL(
-        this.prisma,
-        async (tx) => {
-          await addColumn(tx, input.tableId, `col_${this.generateId().replace(/-/g, '').slice(0, 12)}`);
-        },
-        async () => {}, // metadata created below
-      );
     }
 
     const column = await this.prisma.dtColumn.create({
