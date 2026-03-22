@@ -5,7 +5,7 @@
   "description": "Notion-like data table component - monorepo",
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "build": "pnpm --filter @marlinjai/data-table-core run build && pnpm --filter @marlinjai/data-table-adapter-d1 run build && pnpm --filter @marlinjai/data-table-adapter-memory run build && pnpm --filter @marlinjai/data-table-react run build && pnpm --filter @marlinjai/data-table-file-adapter-storage-brain run build && pnpm --filter @marlinjai/data-table-adapter-data-brain run build",
+    "build": "pnpm --filter @marlinjai/data-table-core run build && pnpm --filter @marlinjai/data-table-adapter-shared run build && pnpm --filter @marlinjai/data-table-adapter-d1 run build && pnpm --filter @marlinjai/data-table-adapter-prisma run build && pnpm --filter @marlinjai/data-table-adapter-memory run build && pnpm --filter @marlinjai/data-table-react run build && pnpm --filter @marlinjai/data-table-file-adapter-storage-brain run build && pnpm --filter @marlinjai/data-table-adapter-data-brain run build",
     "demo": "pnpm --filter data-table-demo run dev",
     "dev": "pnpm -r --if-present run dev",
     "typecheck": "pnpm -r --if-present run typecheck",
