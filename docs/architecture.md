@@ -3,10 +3,9 @@ title: Architecture
 description: System design, patterns, storage architecture, and package structure
 order: 1
 summary: Architecture documentation for the @marlinjai/data-table package covering system design, adapter pattern, real-table storage, package structure, and core/react/adapter layering.
-category: documentation
+type: documentation
 tags: [data-table, architecture, adapter-pattern, monorepo, real-tables, prisma]
 projects: [data-table, data-brain]
-status: active
 date: 2026-03-16
 ---
 

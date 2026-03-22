@@ -3,10 +3,9 @@ title: API Reference
 description: Hooks, components, and type definitions
 order: 2
 summary: API reference for the data-table package covering React hooks (useTable, useRows), components, type definitions, and DatabaseAdapter interface.
-category: documentation
+type: documentation
 tags: [data-table, api-reference, hooks, components]
 projects: [data-table]
-status: active
 ---
 
 # API Reference

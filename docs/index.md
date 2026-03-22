@@ -3,10 +3,9 @@ title: Data Table
 description: Notion-like database component with adapters for D1, Data Brain, and more
 order: 0
 summary: Landing page for the @marlinjai/data-table documentation, a Notion-like database component with adapters for D1, in-memory, Data Brain, and Storage Brain file adapter.
-category: documentation
+type: documentation
 tags: [data-table, index, notion-like, database-component]
 projects: [data-table]
-status: active
 ---
 
 # Data Table Documentation

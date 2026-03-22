@@ -3,10 +3,9 @@ title: Sub-items
 description: Hierarchical rows with parent-child relationships
 order: 5
 summary: Documentation for the data-table sub-items feature supporting hierarchical row structures with parent-child relationships, similar to Notion's sub-items.
-category: documentation
+type: documentation
 tags: [data-table, sub-items, hierarchical, parent-child]
 projects: [data-table]
-status: active
 ---
 
 # Sub-items (Hierarchical Rows)
