@@ -1,7 +1,8 @@
 {
   "name": "@marlinjai/data-table-adapter-data-brain",
   "version": "0.2.0",
-  "description": "Data Brain adapter for @marlinjai/data-table — HTTP-backed DatabaseAdapter",
+  "description": "[DEPRECATED] Data Brain adapter — use @marlinjai/data-table-adapter-d1 or @marlinjai/data-table-adapter-prisma instead",
+  "deprecated": "This package is deprecated. Use @marlinjai/data-table-adapter-d1 or @marlinjai/data-table-adapter-prisma directly.",
   "author": "marlinjai",
   "license": "MIT",
   "repository": {

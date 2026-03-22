@@ -16,6 +16,11 @@ export interface DataBrainAdapterConfig {
   workspaceId: string;
 }
 
+/**
+ * @deprecated Use D1Adapter from @marlinjai/data-table-adapter-d1 or
+ * PrismaAdapter from @marlinjai/data-table-adapter-prisma instead.
+ * This package will be removed in a future major version.
+ */
 export class DataBrainAdapter extends BaseDatabaseAdapter {
   private readonly client: DataBrain;
   private readonly workspaceId: string;
