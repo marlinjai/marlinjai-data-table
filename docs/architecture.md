@@ -9,6 +9,8 @@ projects: [data-table, data-brain]
 date: 2026-03-16
 ---
 
+> **Note (2026-03-22):** `adapter-data-brain` is deprecated. Data Brain has been archived and all consumers now use `adapter-d1` (Cloudflare edge) or `adapter-prisma` (PostgreSQL) directly. The `adapter-data-brain` package remains in the repo for reference but should not be used in new integrations.
+
 # Architecture
 
 This document describes the architecture of the `@marlinjai/data-table` package.
@@ -262,11 +264,11 @@ const result = await adapter.getRows(tableId, {
 
 | | PrismaAdapter | D1Adapter | MemoryAdapter | DataBrainAdapter |
 |---|---|---|---|---|
-| **Database** | PostgreSQL | Cloudflare D1 | In-memory | HTTP → API |
+| **Database** | PostgreSQL | Cloudflare D1 | In-memory | HTTP → API (deprecated) |
 | **Storage** | Real TEXT columns | JSON blobs (upgrade in progress) | JS objects | Delegates |
 | **Transactions** | Full ACID | D1 batch | Sync | Server-side |
 | **Filter casting** | `::NUMERIC` | `CAST(AS REAL)` | JS comparison | Server-side |
-| **Use case** | Production | Edge | Testing | Client apps |
+| **Use case** | Production | Edge | Testing | Deprecated — use adapter-d1 or adapter-prisma |
 
 ### Lazy Migration
 

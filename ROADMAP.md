@@ -66,7 +66,7 @@ This document outlines the current implementation status and planned features fo
 | D1 | Complete | Cloudflare SQLite (JSON blobs, real-table upgrade in progress) |
 | Prisma (PostgreSQL) | Complete | Real table columns, transactional DDL, lazy migration |
 | Adapter Shared | Complete | Shared utilities (identifiers, type mapping, query builder, DDL) |
-| Data Brain (HTTP) | Complete | HTTP-backed adapter via Data Brain SDK |
+| Data Brain (HTTP) | Deprecated | HTTP-backed adapter via Data Brain SDK — Data Brain archived 2026-03-22; use adapter-d1 or adapter-prisma |
 | Storage Brain File | Complete | File storage integration |
 
 ---
