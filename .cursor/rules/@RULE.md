@@ -14,7 +14,7 @@ packages/
 ├── react/          # React components, hooks, providers
 ├── adapter-memory/ # In-memory adapter for testing/demos
 ├── adapter-d1/     # Cloudflare D1 adapter
-├── adapter-data-brain/          # Data Brain HTTP adapter
+├── adapter-data-brain/          # Data Brain HTTP adapter (DEPRECATED — Data Brain archived 2026-03-22)
 ├── file-adapter-storage-brain/  # Storage Brain file adapter
 └── demo/           # Demo app for development
 ```
@@ -22,7 +22,7 @@ packages/
 ## Key Patterns
 
 ### Adapter Pattern
-- **DatabaseAdapter**: Interface for data persistence (Memory, D1, Data Brain)
+- **DatabaseAdapter**: Interface for data persistence (Memory, D1, Prisma; Data Brain adapter deprecated 2026-03-22)
 - **FileStorageAdapter**: Interface for file uploads (Storage Brain, S3)
 - Adapters are injected via `DataTableProvider`
 

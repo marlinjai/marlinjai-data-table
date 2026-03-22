@@ -1,8 +1,8 @@
 ---
 title: Data Table
-description: Notion-like database component with adapters for D1, Data Brain, and more
+description: Notion-like database component with adapters for D1, Prisma, and more
 order: 0
-summary: Landing page for the @marlinjai/data-table documentation, a Notion-like database component with adapters for D1, in-memory, Data Brain, and Storage Brain file adapter.
+summary: Landing page for the @marlinjai/data-table documentation, a Notion-like database component with adapters for D1, Prisma, in-memory, and Storage Brain file adapter. The Data Brain adapter is deprecated (Data Brain archived 2026-03-22).
 type: documentation
 tags: [data-table, index, notion-like, database-component]
 projects: [data-table]
@@ -68,7 +68,8 @@ The data table is **storage-agnostic**. You provide an adapter that implements t
 
 - `MemoryAdapter` - In-memory storage (for testing/demos)
 - `D1Adapter` - Cloudflare D1
-- `DataBrainAdapter` - Data Brain HTTP adapter
+- `PrismaAdapter` - PostgreSQL via Prisma
+- `DataBrainAdapter` - **Deprecated.** Data Brain HTTP adapter (Data Brain archived 2026-03-22; use D1Adapter or PrismaAdapter instead)
 - `StorageBrainFileAdapter` - Storage Brain file adapter
 
 ### Column Types
