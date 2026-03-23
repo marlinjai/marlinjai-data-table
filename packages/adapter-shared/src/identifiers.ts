@@ -36,8 +36,13 @@ export function safeTableName(tableId: string): string {
 
 /**
  * Converts a column ID to a safe SQL column name.
- * Column IDs (e.g., "col_abc123") are used directly as SQL column names.
+ * Column IDs prefixed with "col_" are used directly.
+ * UUIDs get "col_" prefix with hyphens removed.
  */
 export function safeColumnName(columnId: string): string {
-  return validateIdentifier(columnId);
+  if (columnId.startsWith('col_')) {
+    return validateIdentifier(columnId);
+  }
+  const sanitized = `col_${columnId.replace(/-/g, '')}`;
+  return validateIdentifier(sanitized);
 }

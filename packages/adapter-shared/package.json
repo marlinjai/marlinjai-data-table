@@ -1,6 +1,6 @@
 {
   "name": "@marlinjai/data-table-adapter-shared",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Shared utilities for data-table database adapters (identifiers, type mapping, query building, DDL)",
   "author": "marlinjai",
   "license": "MIT",
