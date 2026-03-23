@@ -1061,7 +1061,7 @@ export class PrismaAdapter extends BaseDatabaseAdapter {
 
     for (const col of columns) {
       if (isScalarType(col.type)) {
-        const rawValue = raw[col.id];
+        const rawValue = raw[safeColumnName(col.id)];
         cells[col.id] = deserializeCell(
           rawValue != null ? String(rawValue) : null,
           col.type,

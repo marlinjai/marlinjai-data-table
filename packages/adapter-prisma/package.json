@@ -1,6 +1,6 @@
 {
   "name": "@marlinjai/data-table-adapter-prisma",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Prisma-based PostgreSQL adapter for data-table with real table columns",
   "author": "marlinjai",
   "license": "MIT",
