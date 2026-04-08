@@ -675,6 +675,7 @@ export function TableView({
     return (
       <tr
         key={row.id}
+        data-row-id={row.id}
         style={{
           backgroundColor: selectedRows.has(row.id) ? 'var(--dt-bg-selected)' : 'var(--dt-bg-primary)',
         }}
