@@ -85,6 +85,10 @@ export interface TableViewProps {
   /** Called when column alignment changes via context menu */
   onColumnAlignmentChange?: (columnId: string, alignment: TextAlignment) => void;
 
+  // Row open action
+  /** Called when the user clicks the "OPEN" button on a row. Shows a hover button in the primary column. */
+  onRowOpen?: (row: Row) => void;
+
   // Keyboard navigation
   /** Enable keyboard cell navigation (arrow keys, Enter to edit, Tab to move). Defaults to true. */
   enableKeyboardNav?: boolean;
@@ -148,6 +152,7 @@ export function TableView({
   showFooter = true,
   borderConfig,
   onColumnAlignmentChange,
+  onRowOpen,
   enableKeyboardNav = true,
   className,
   style,
@@ -844,6 +849,35 @@ export function TableView({
                     onGetRelationRowTitle={onGetRelationRowTitle}
                   />
                 </div>
+                {/* OPEN button on primary column */}
+                {isFirstColumn && onRowOpen && (
+                  <button
+                    className="dt-row-open-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRowOpen(row);
+                    }}
+                    style={{
+                      marginLeft: '4px',
+                      padding: '1px 6px',
+                      border: '1px solid var(--dt-border-color)',
+                      borderRadius: '4px',
+                      background: 'var(--dt-bg-secondary)',
+                      color: 'var(--dt-text-muted)',
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      letterSpacing: '0.5px',
+                      textTransform: 'uppercase' as const,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap' as const,
+                      opacity: 0,
+                      transition: 'opacity 0.15s',
+                      flexShrink: 0,
+                    }}
+                  >
+                    OPEN
+                  </button>
+                )}
               </div>
             </td>
           );

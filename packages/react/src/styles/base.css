@@ -115,6 +115,18 @@
   background-color: var(--dt-bg-selected);
 }
 
+/* ==================== Row Open Button ==================== */
+
+.dt-table-view tr:hover .dt-row-open-btn {
+  opacity: 1 !important;
+}
+
+.dt-row-open-btn:hover {
+  background-color: var(--dt-bg-hover) !important;
+  color: var(--dt-text-primary) !important;
+  border-color: var(--dt-border-color-strong) !important;
+}
+
 /* ==================== Cells ==================== */
 
 .dt-cell {
