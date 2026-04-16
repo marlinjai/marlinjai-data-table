@@ -41,3 +41,5 @@ yarn.lock
 
 #docs
 docs-dist/  
+
+.infisical.json
