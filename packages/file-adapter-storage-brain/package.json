@@ -2,6 +2,9 @@
   "name": "@marlinjai/data-table-file-adapter-storage-brain",
   "version": "0.2.0",
   "description": "Storage Brain file adapter for @marlinjai/data-table",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
