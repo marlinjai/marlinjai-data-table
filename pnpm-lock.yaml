@@ -77,22 +77,6 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
-  packages/adapter-data-brain:
-    dependencies:
-      '@marlinjai/data-brain-sdk':
-        specifier: ^0.2.0
-        version: 0.2.0
-      '@marlinjai/data-table-core':
-        specifier: '*'
-        version: 0.2.0
-    devDependencies:
-      tsup:
-        specifier: ^8.0.1
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.6)(typescript@5.9.3)(yaml@2.8.2)
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-
   packages/adapter-memory:
     dependencies:
       '@marlinjai/data-table-core':
@@ -858,14 +842,8 @@ packages:
       puppeteer:
         optional: true
 
-  '@marlinjai/data-brain-sdk@0.2.0':
-    resolution: {integrity: sha512-woU98JmLNNMZN+a0QDGZnbhO0Jbcuv5Kxm0u9igfGwock/mBo3Ww9+uK745aCvSVteEkDlQMECKOnI7vR8JWNg==}
-
   '@marlinjai/data-table-adapter-memory@0.1.0':
     resolution: {integrity: sha512-WtSgzp4sZNDuHe0dK7c07y2S/YIvea0mRL8vRttqbWD0jhG8YJRedDUwwSZBZYMkQQAMS6Yp5CUCbltsjUN33w==}
-
-  '@marlinjai/data-table-core@0.1.1':
-    resolution: {integrity: sha512-P2msh6+XTHAIcTG1bwAG776a7FQwHklNsc1v/QsoAxLHHuZ9gx7w6/SJHqLzodpzLD9YWbT+dpi1Xqc78J0yUQ==}
 
   '@marlinjai/data-table-core@0.2.0':
     resolution: {integrity: sha512-fACvrQm8p0B6gLAesIQPcdrJ3J7xDj8czTwFUnakWBZAXMCAbKqRtot8wibowJbR85n+TQBX9CZjgqgHk2R4rw==}
@@ -3727,15 +3705,9 @@ snapshots:
       - tsx
       - yaml
 
-  '@marlinjai/data-brain-sdk@0.2.0':
-    dependencies:
-      '@marlinjai/data-table-core': 0.1.1
-
   '@marlinjai/data-table-adapter-memory@0.1.0':
     dependencies:
       '@marlinjai/data-table-core': 0.2.0
-
-  '@marlinjai/data-table-core@0.1.1': {}
 
   '@marlinjai/data-table-core@0.2.0': {}
 

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type {
   Table,
   Column,
@@ -11,8 +11,17 @@ import type {
   QuerySort,
   SelectOption,
   FileReference,
+  CreateSelectOptionInput,
+  UpdateSelectOptionInput,
+  CreateFileRefInput,
 } from '@marlinjai/data-table-core';
-import { useDbAdapter, useWorkspaceId, useFileAdapter } from '../providers/DataTableProvider';
+import {
+  useDbAdapter,
+  useWorkspaceId,
+  useFileAdapter,
+  useActions,
+  useInitialData,
+} from '../providers/DataTableProvider';
 import { useColumns } from './useColumns';
 import { useRows } from './useRows';
 
@@ -88,29 +97,43 @@ export function useTable({
 }: UseTableOptions): UseTableResult {
   const dbAdapter = useDbAdapter();
   const fileAdapter = useFileAdapter();
+  const actions = useActions();
+  const initialData = useInitialData();
 
   // Table state
   const [table, setTable] = useState<Table | null>(null);
-  const [isTableLoading, setIsTableLoading] = useState(true);
+  const [isTableLoading, setIsTableLoading] = useState(!initialData);
   const [tableError, setTableError] = useState<Error | null>(null);
 
-  // Select options cache
+  // Select options cache — seed from initialData if provided
+  const buildInitialSelectOptions = (): Map<string, SelectOption[]> => {
+    if (initialData?.selectOptions) {
+      return new Map(Object.entries(initialData.selectOptions));
+    }
+    return new Map();
+  };
   const [selectOptions, setSelectOptions] = useState<Map<string, SelectOption[]>>(
-    new Map()
+    buildInitialSelectOptions
   );
+  const hasInitialSelectOptions = initialData?.selectOptions !== undefined;
 
-  // Use column and row hooks
-  const columnsHook = useColumns({ tableId });
+  // Use column and row hooks — pass initialData through
+  const columnsHook = useColumns({ tableId, initialColumns: initialData?.columns });
   const rowsHook = useRows({
     tableId,
     initialFilters,
     initialSorts,
     pageSize,
     includeArchived,
+    initialRows: initialData?.rows,
   });
 
-  // Fetch table
+  // Fetch table (skip if no adapter)
   useEffect(() => {
+    if (!dbAdapter) {
+      setIsTableLoading(false);
+      return;
+    }
     const fetchTable = async () => {
       try {
         setIsTableLoading(true);
@@ -129,14 +152,21 @@ export function useTable({
 
   // Load select options for select/multi_select columns
   useEffect(() => {
+    // If we got initial select options, or if there's no way to load them, skip
+    if (!dbAdapter && !actions?.getSelectOptions) return;
+
     const loadOptions = async () => {
       const selectColumns = columnsHook.columns.filter(
         (c) => c.type === 'select' || c.type === 'multi_select'
       );
 
+      const getOptionsFn = actions?.getSelectOptions
+        ?? (dbAdapter ? (id: string) => dbAdapter.getSelectOptions(id) : undefined);
+      if (!getOptionsFn) return;
+
       for (const column of selectColumns) {
         if (!selectOptions.has(column.id)) {
-          const options = await dbAdapter.getSelectOptions(column.id);
+          const options = await getOptionsFn(column.id);
           setSelectOptions((prev) => new Map(prev).set(column.id, options));
         }
       }
@@ -145,10 +175,11 @@ export function useTable({
     if (columnsHook.columns.length > 0) {
       loadOptions();
     }
-  }, [dbAdapter, columnsHook.columns, selectOptions]);
+  }, [dbAdapter, actions, columnsHook.columns, selectOptions]);
 
   const updateTable = useCallback(
     async (updates: UpdateTableInput) => {
+      if (!dbAdapter) throw new Error('No dbAdapter available for updateTable');
       const updated = await dbAdapter.updateTable(tableId, updates);
       setTable(updated);
       return updated;
@@ -158,15 +189,21 @@ export function useTable({
 
   const loadSelectOptions = useCallback(
     async (columnId: string) => {
-      const options = await dbAdapter.getSelectOptions(columnId);
+      const getOptionsFn = actions?.getSelectOptions
+        ?? (dbAdapter ? (id: string) => dbAdapter.getSelectOptions(id) : undefined);
+      if (!getOptionsFn) throw new Error('No getSelectOptions action or dbAdapter available');
+      const options = await getOptionsFn(columnId);
       setSelectOptions((prev) => new Map(prev).set(columnId, options));
     },
-    [dbAdapter]
+    [actions, dbAdapter]
   );
 
   const createSelectOption = useCallback(
     async (columnId: string, name: string, color?: string) => {
-      const option = await dbAdapter.createSelectOption({
+      const createFn = actions?.createSelectOption
+        ?? (dbAdapter ? (i: CreateSelectOptionInput) => dbAdapter.createSelectOption(i) : undefined);
+      if (!createFn) throw new Error('No createSelectOption action or dbAdapter available');
+      const option = await createFn({
         columnId,
         name,
         color,
@@ -178,12 +215,15 @@ export function useTable({
       });
       return option;
     },
-    [dbAdapter]
+    [actions, dbAdapter]
   );
 
   const updateSelectOption = useCallback(
     async (optionId: string, updates: { name?: string; color?: string }) => {
-      const option = await dbAdapter.updateSelectOption(optionId, updates);
+      const updateFn = actions?.updateSelectOption
+        ?? (dbAdapter ? (id: string, u: UpdateSelectOptionInput) => dbAdapter.updateSelectOption(id, u) : undefined);
+      if (!updateFn) throw new Error('No updateSelectOption action or dbAdapter available');
+      const option = await updateFn(optionId, updates);
       // Update local cache
       setSelectOptions((prev) => {
         const newMap = new Map(prev);
@@ -200,12 +240,15 @@ export function useTable({
       });
       return option;
     },
-    [dbAdapter]
+    [actions, dbAdapter]
   );
 
   const deleteSelectOption = useCallback(
     async (columnId: string, optionId: string) => {
-      await dbAdapter.deleteSelectOption(optionId);
+      const deleteFn = actions?.deleteSelectOption
+        ?? (dbAdapter ? (id: string) => dbAdapter.deleteSelectOption(id) : undefined);
+      if (!deleteFn) throw new Error('No deleteSelectOption action or dbAdapter available');
+      await deleteFn(optionId);
       // Update local cache
       setSelectOptions((prev) => {
         const existing = prev.get(columnId) ?? [];
@@ -215,7 +258,7 @@ export function useTable({
         );
       });
     },
-    [dbAdapter]
+    [actions, dbAdapter]
   );
 
   const updateCell = useCallback(
@@ -260,9 +303,11 @@ export function useTable({
       const newFiles = [...currentFiles, fileRef];
       await rowsHook.updateRow(rowId, { [columnId]: newFiles });
 
-      // Store file reference in database (if adapter supports it)
-      if (dbAdapter.addFileReference) {
-        await dbAdapter.addFileReference({
+      // Store file reference in database
+      const addFileRefFn = actions?.addFileReference
+        ?? (dbAdapter?.addFileReference ? (i: CreateFileRefInput) => dbAdapter.addFileReference(i) : undefined);
+      if (addFileRefFn) {
+        await addFileRefFn({
           rowId,
           columnId,
           fileId: uploaded.id,
@@ -277,7 +322,7 @@ export function useTable({
 
       return fileRef;
     },
-    [fileAdapter, dbAdapter, rowsHook]
+    [fileAdapter, dbAdapter, actions, rowsHook]
   );
 
   const deleteFile = useCallback(
@@ -293,16 +338,18 @@ export function useTable({
       // Delete from file storage
       await fileAdapter.delete(fileId);
 
-      // Remove from database (if adapter supports it)
-      if (dbAdapter.removeFileReference) {
-        await dbAdapter.removeFileReference(fileRef.id);
+      // Remove from database
+      const removeFileRefFn = actions?.removeFileReference
+        ?? (dbAdapter?.removeFileReference ? (id: string) => dbAdapter.removeFileReference(id) : undefined);
+      if (removeFileRefFn) {
+        await removeFileRefFn(fileRef.id);
       }
 
       // Update row with file removed
       const newFiles = currentFiles.filter((f) => f.fileId !== fileId);
       await rowsHook.updateRow(rowId, { [columnId]: newFiles });
     },
-    [fileAdapter, dbAdapter, rowsHook]
+    [fileAdapter, dbAdapter, actions, rowsHook]
   );
 
   return {

@@ -2,7 +2,7 @@
 title: Data Table
 description: Notion-like database component with adapters for D1, Prisma, and more
 order: 0
-summary: Landing page for the @marlinjai/data-table documentation, a Notion-like database component with adapters for D1, Prisma, in-memory, and Storage Brain file adapter. The Data Brain adapter is deprecated (Data Brain archived 2026-03-22).
+summary: Landing page for the @marlinjai/data-table documentation, a Notion-like database component with adapters for D1, Prisma, in-memory, and Storage Brain file adapter.
 type: documentation
 tags: [data-table, index, notion-like, database-component]
 projects: [data-table]

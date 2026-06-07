@@ -21,6 +21,10 @@ export function useTables(): UseTablesResult {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchTables = useCallback(async () => {
+    if (!dbAdapter) {
+      setIsLoading(false);
+      return;
+    }
     try {
       setIsLoading(true);
       setError(null);
@@ -39,6 +43,7 @@ export function useTables(): UseTablesResult {
 
   const createTable = useCallback(
     async (input: Omit<CreateTableInput, 'workspaceId'>) => {
+      if (!dbAdapter) throw new Error('No dbAdapter available for createTable');
       const table = await dbAdapter.createTable({ ...input, workspaceId });
       setTables((prev) => [table, ...prev]);
       return table;
@@ -48,6 +53,7 @@ export function useTables(): UseTablesResult {
 
   const updateTable = useCallback(
     async (tableId: string, updates: UpdateTableInput) => {
+      if (!dbAdapter) throw new Error('No dbAdapter available for updateTable');
       const table = await dbAdapter.updateTable(tableId, updates);
       setTables((prev) => prev.map((t) => (t.id === tableId ? table : t)));
       return table;
@@ -57,6 +63,7 @@ export function useTables(): UseTablesResult {
 
   const deleteTable = useCallback(
     async (tableId: string) => {
+      if (!dbAdapter) throw new Error('No dbAdapter available for deleteTable');
       await dbAdapter.deleteTable(tableId);
       setTables((prev) => prev.filter((t) => t.id !== tableId));
     },

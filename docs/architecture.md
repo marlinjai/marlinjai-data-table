@@ -5,11 +5,11 @@ order: 1
 summary: Architecture documentation for the @marlinjai/data-table package covering system design, adapter pattern, real-table storage, package structure, and core/react/adapter layering.
 type: documentation
 tags: [data-table, architecture, adapter-pattern, monorepo, real-tables, prisma]
-projects: [data-table, data-brain]
+projects: [data-table]
 date: 2026-03-16
 ---
 
-> **Note (2026-03-22):** `adapter-data-brain` is deprecated. Data Brain has been archived and all consumers now use `adapter-d1` (Cloudflare edge) or `adapter-prisma` (PostgreSQL) directly. The `adapter-data-brain` package remains in the repo for reference but should not be used in new integrations.
+> **Note (2026-03-22):** Data Brain has been archived and the `adapter-data-brain` package was removed. All consumers use `adapter-d1` (Cloudflare edge) or `adapter-prisma` (PostgreSQL) directly via the `DatabaseAdapter` interface.
 
 # Architecture
 
@@ -54,7 +54,7 @@ This document describes the architecture of the `@marlinjai/data-table` package.
 │   │   └── package.json
 │   │
 │   ├── adapter-memory/               # In-memory adapter (testing)
-│   ├── adapter-data-brain/           # HTTP adapter (SDK → Data Brain API)
+│   ├── adapter-prisma/               # Prisma adapter (PostgreSQL)
 │   │
 │   ├── react/                        # React components + hooks
 │   │   ├── src/
@@ -80,12 +80,6 @@ This document describes the architecture of the `@marlinjai/data-table` package.
             /       \       |
            /         \      |
     adapter-prisma  adapter-d1    adapter-memory
-           \         /
-            \       /
-        data-brain API  ←──  data-brain SDK
-                                    │
-                            adapter-data-brain
-                            (HTTP adapter for client apps)
 ```
 
 ## Design Patterns
@@ -100,12 +94,12 @@ The package uses the **Adapter Pattern** to decouple data storage from the UI la
 │  (components)   │     │   (41 methods)    │
 └─────────────────┘     └───────────────────┘
                                │
-          ┌────────────────┬───┴───────┬────────────────┐
-          ▼                ▼           ▼                ▼
-   ┌────────────┐   ┌──────────┐  ┌──────────┐  ┌────────────┐
-   │   Prisma   │   │    D1    │  │  Memory  │  │ Data Brain │
-   │ (Postgres) │   │  (Edge)  │  │ (Testing)│  │   (HTTP)   │
-   └─────┬──────┘   └────┬─────┘  └──────────┘  └────────────┘
+          ┌────────────────┬───┴───────┐
+          ▼                ▼           ▼
+   ┌────────────┐   ┌──────────┐  ┌──────────┐
+   │   Prisma   │   │    D1    │  │  Memory  │
+   │ (Postgres) │   │  (Edge)  │  │ (Testing)│
+   └─────┬──────┘   └────┬─────┘  └──────────┘
          │                │
          └──────┬─────────┘
                 ▼
@@ -116,7 +110,7 @@ The package uses the **Adapter Pattern** to decouple data storage from the UI la
 ```
 
 **Benefits:**
-- Test with in-memory adapter, deploy with Prisma/D1/Data Brain
+- Test with in-memory adapter, deploy with Prisma or D1
 - All adapters share code via `adapter-shared`
 - No storage logic in UI components
 
@@ -262,13 +256,13 @@ const result = await adapter.getRows(tableId, {
 
 ### Adapter Comparison
 
-| | PrismaAdapter | D1Adapter | MemoryAdapter | DataBrainAdapter |
-|---|---|---|---|---|
-| **Database** | PostgreSQL | Cloudflare D1 | In-memory | HTTP → API (deprecated) |
-| **Storage** | Real TEXT columns | JSON blobs (upgrade in progress) | JS objects | Delegates |
-| **Transactions** | Full ACID | D1 batch | Sync | Server-side |
-| **Filter casting** | `::NUMERIC` | `CAST(AS REAL)` | JS comparison | Server-side |
-| **Use case** | Production | Edge | Testing | Deprecated — use adapter-d1 or adapter-prisma |
+| | PrismaAdapter | D1Adapter | MemoryAdapter |
+|---|---|---|---|
+| **Database** | PostgreSQL | Cloudflare D1 | In-memory |
+| **Storage** | Real TEXT columns | JSON blobs (upgrade in progress) | JS objects |
+| **Transactions** | Full ACID | D1 batch | Sync |
+| **Filter casting** | `::NUMERIC` | `CAST(AS REAL)` | JS comparison |
+| **Use case** | Production | Edge | Testing |
 
 ### Lazy Migration
 
@@ -488,7 +482,7 @@ type ViewType = 'table' | 'board' | 'calendar' | 'gallery' | 'timeline' | 'list'
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                       Storage Backend                            │
-│           (Memory, D1, Data Brain, etc.)                         │
+│           (Memory, D1, Prisma, etc.)                             │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

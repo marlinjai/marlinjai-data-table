@@ -8,7 +8,7 @@ import type {
   QueryFilter,
   QuerySort,
 } from '@marlinjai/data-table-core';
-import { useDbAdapter } from '../providers/DataTableProvider';
+import { useDbAdapter, useActions } from '../providers/DataTableProvider';
 
 export interface UseRowsOptions {
   tableId: string;
@@ -16,6 +16,7 @@ export interface UseRowsOptions {
   initialSorts?: QuerySort[];
   pageSize?: number;
   includeArchived?: boolean;
+  initialRows?: { items: Row[]; total: number; hasMore: boolean };
 }
 
 export interface UseRowsResult {
@@ -56,19 +57,29 @@ export function useRows({
   initialSorts = [],
   pageSize = 50,
   includeArchived = false,
+  initialRows,
 }: UseRowsOptions): UseRowsResult {
   const dbAdapter = useDbAdapter();
-  const [rows, setRows] = useState<Row[]>([]);
-  const [total, setTotal] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const actions = useActions();
+  const hasInitialRows = initialRows !== undefined;
+  const [rows, setRows] = useState<Row[]>(initialRows?.items ?? []);
+  const [total, setTotal] = useState(initialRows?.total ?? 0);
+  const [hasMore, setHasMore] = useState(initialRows?.hasMore ?? false);
+  const [isLoading, setIsLoading] = useState(!hasInitialRows);
   const [error, setError] = useState<Error | null>(null);
   const [filters, setFiltersState] = useState<QueryFilter[]>(initialFilters);
   const [sorts, setSortsState] = useState<QuerySort[]>(initialSorts);
-  const offsetRef = useRef(0);
+  const offsetRef = useRef(hasInitialRows ? (initialRows?.items.length ?? 0) : 0);
+  // Track whether we've consumed initialRows to avoid re-fetching on mount
+  const initialDataConsumed = useRef(hasInitialRows);
 
   const fetchRows = useCallback(
     async (append = false) => {
+      if (!dbAdapter) {
+        // No adapter available — can't fetch
+        setIsLoading(false);
+        return;
+      }
       try {
         setIsLoading(true);
         setError(null);
@@ -103,6 +114,11 @@ export function useRows({
   );
 
   useEffect(() => {
+    // Skip initial fetch if we already have initialRows
+    if (initialDataConsumed.current) {
+      initialDataConsumed.current = false;
+      return;
+    }
     fetchRows(false);
   }, [fetchRows]);
 
@@ -147,7 +163,10 @@ export function useRows({
         cells: options?.cells,
         parentRowId: options?.parentRowId,
       };
-      const row = await dbAdapter.createRow(input);
+      const createFn = actions?.createRow
+        ?? (dbAdapter ? (i: CreateRowInput) => dbAdapter.createRow(i) : undefined);
+      if (!createFn) throw new Error('No createRow action or dbAdapter available');
+      const row = await createFn(input);
       // If it's a sub-item, add it after its parent in the list
       if (options?.parentRowId) {
         setRows((prev) => {
@@ -165,30 +184,39 @@ export function useRows({
       setTotal((prev) => prev + 1);
       return row;
     },
-    [dbAdapter, tableId]
+    [actions, dbAdapter, tableId]
   );
 
   const updateRow = useCallback(
     async (rowId: string, cells: Record<string, CellValue>) => {
-      const row = await dbAdapter.updateRow(rowId, cells);
+      const updateFn = actions?.updateRow
+        ?? (dbAdapter ? (id: string, c: Record<string, CellValue>) => dbAdapter.updateRow(id, c) : undefined);
+      if (!updateFn) throw new Error('No updateRow action or dbAdapter available');
+      const row = await updateFn(rowId, cells);
       setRows((prev) => prev.map((r) => (r.id === rowId ? row : r)));
       return row;
     },
-    [dbAdapter]
+    [actions, dbAdapter]
   );
 
   const deleteRow = useCallback(
     async (rowId: string) => {
-      await dbAdapter.deleteRow(rowId);
+      const deleteFn = actions?.deleteRow
+        ?? (dbAdapter ? (id: string) => dbAdapter.deleteRow(id) : undefined);
+      if (!deleteFn) throw new Error('No deleteRow action or dbAdapter available');
+      await deleteFn(rowId);
       setRows((prev) => prev.filter((r) => r.id !== rowId));
       setTotal((prev) => prev - 1);
     },
-    [dbAdapter]
+    [actions, dbAdapter]
   );
 
   const archiveRow = useCallback(
     async (rowId: string) => {
-      await dbAdapter.archiveRow(rowId);
+      const archiveFn = actions?.archiveRow
+        ?? (dbAdapter ? (id: string) => dbAdapter.archiveRow(id) : undefined);
+      if (!archiveFn) throw new Error('No archiveRow action or dbAdapter available');
+      await archiveFn(rowId);
       if (!includeArchived) {
         setRows((prev) => prev.filter((r) => r.id !== rowId));
         setTotal((prev) => prev - 1);
@@ -198,31 +226,40 @@ export function useRows({
         );
       }
     },
-    [dbAdapter, includeArchived]
+    [actions, dbAdapter, includeArchived]
   );
 
   const unarchiveRow = useCallback(
     async (rowId: string) => {
-      await dbAdapter.unarchiveRow(rowId);
+      const unarchiveFn = actions?.unarchiveRow
+        ?? (dbAdapter ? (id: string) => dbAdapter.unarchiveRow(id) : undefined);
+      if (!unarchiveFn) throw new Error('No unarchiveRow action or dbAdapter available');
+      await unarchiveFn(rowId);
       setRows((prev) =>
         prev.map((r) => (r.id === rowId ? { ...r, archived: false } : r))
       );
     },
-    [dbAdapter]
+    [actions, dbAdapter]
   );
 
   const bulkDelete = useCallback(
     async (rowIds: string[]) => {
-      await dbAdapter.bulkDeleteRows(rowIds);
+      const bulkDeleteFn = actions?.bulkDeleteRows
+        ?? (dbAdapter ? (ids: string[]) => dbAdapter.bulkDeleteRows(ids) : undefined);
+      if (!bulkDeleteFn) throw new Error('No bulkDeleteRows action or dbAdapter available');
+      await bulkDeleteFn(rowIds);
       setRows((prev) => prev.filter((r) => !rowIds.includes(r.id)));
       setTotal((prev) => prev - rowIds.length);
     },
-    [dbAdapter]
+    [actions, dbAdapter]
   );
 
   const bulkArchive = useCallback(
     async (rowIds: string[]) => {
-      await dbAdapter.bulkArchiveRows(rowIds);
+      const bulkArchiveFn = actions?.bulkArchiveRows
+        ?? (dbAdapter ? (ids: string[]) => dbAdapter.bulkArchiveRows(ids) : undefined);
+      if (!bulkArchiveFn) throw new Error('No bulkArchiveRows action or dbAdapter available');
+      await bulkArchiveFn(rowIds);
       if (!includeArchived) {
         setRows((prev) => prev.filter((r) => !rowIds.includes(r.id)));
         setTotal((prev) => prev - rowIds.length);
@@ -234,7 +271,7 @@ export function useRows({
         );
       }
     },
-    [dbAdapter, includeArchived]
+    [actions, dbAdapter, includeArchived]
   );
 
   const loadMore = useCallback(async () => {

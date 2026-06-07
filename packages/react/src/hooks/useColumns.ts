@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type {
   Column,
   CreateColumnInput,
@@ -7,10 +7,11 @@ import type {
   CreateSelectOptionInput,
   UpdateSelectOptionInput,
 } from '@marlinjai/data-table-core';
-import { useDbAdapter } from '../providers/DataTableProvider';
+import { useDbAdapter, useActions } from '../providers/DataTableProvider';
 
 export interface UseColumnsOptions {
   tableId: string;
+  initialColumns?: Column[];
 }
 
 export interface UseColumnsResult {
@@ -34,13 +35,22 @@ export interface UseColumnsResult {
   refresh: () => Promise<void>;
 }
 
-export function useColumns({ tableId }: UseColumnsOptions): UseColumnsResult {
+export function useColumns({ tableId, initialColumns }: UseColumnsOptions): UseColumnsResult {
   const dbAdapter = useDbAdapter();
-  const [columns, setColumns] = useState<Column[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const actions = useActions();
+  const hasInitialColumns = initialColumns !== undefined;
+  const [columns, setColumns] = useState<Column[]>(initialColumns ?? []);
+  const [isLoading, setIsLoading] = useState(!hasInitialColumns);
   const [error, setError] = useState<Error | null>(null);
+  // Track whether we've consumed initialColumns to avoid re-fetching on mount
+  const initialDataConsumed = useRef(hasInitialColumns);
 
   const fetchColumns = useCallback(async () => {
+    if (!dbAdapter) {
+      // No adapter available — can't fetch
+      setIsLoading(false);
+      return;
+    }
     try {
       setIsLoading(true);
       setError(null);
@@ -54,20 +64,30 @@ export function useColumns({ tableId }: UseColumnsOptions): UseColumnsResult {
   }, [dbAdapter, tableId]);
 
   useEffect(() => {
+    // Skip initial fetch if we already have initialColumns
+    if (initialDataConsumed.current) {
+      initialDataConsumed.current = false;
+      return;
+    }
     fetchColumns();
   }, [fetchColumns]);
 
   const addColumn = useCallback(
     async (input: Omit<CreateColumnInput, 'tableId'>) => {
-      const column = await dbAdapter.createColumn({ ...input, tableId });
+      const createFn = actions?.createColumn
+        ?? (dbAdapter ? (i: CreateColumnInput) => dbAdapter.createColumn(i) : undefined);
+      if (!createFn) throw new Error('No createColumn action or dbAdapter available');
+      const column = await createFn({ ...input, tableId });
       setColumns((prev) => [...prev, column]);
       return column;
     },
-    [dbAdapter, tableId]
+    [actions, dbAdapter, tableId]
   );
 
   const updateColumn = useCallback(
     async (columnId: string, updates: UpdateColumnInput) => {
+      const updateFn = actions?.updateColumn
+        ?? (dbAdapter ? (id: string, u: UpdateColumnInput) => dbAdapter.updateColumn(id, u) : undefined);
       // Alignment is UI-only (not persisted by all adapters), so handle it locally
       if (updates.alignment !== undefined) {
         const { alignment, ...apiUpdates } = updates;
@@ -76,7 +96,8 @@ export function useColumns({ tableId }: UseColumnsOptions): UseColumnsResult {
         );
         // If there are other updates beyond alignment, send them to the API
         if (Object.keys(apiUpdates).length > 0) {
-          const column = await dbAdapter.updateColumn(columnId, apiUpdates);
+          if (!updateFn) throw new Error('No updateColumn action or dbAdapter available');
+          const column = await updateFn(columnId, apiUpdates);
           setColumns((prev) =>
             prev.map((c) => (c.id === columnId ? { ...column, alignment } : c))
           );
@@ -85,59 +106,91 @@ export function useColumns({ tableId }: UseColumnsOptions): UseColumnsResult {
         const existing = columns.find((c) => c.id === columnId);
         return existing ? { ...existing, alignment } : existing!;
       }
-      const column = await dbAdapter.updateColumn(columnId, updates);
+      if (!updateFn) throw new Error('No updateColumn action or dbAdapter available');
+      const column = await updateFn(columnId, updates);
       // Preserve any existing local alignment when API returns
       setColumns((prev) =>
         prev.map((c) => (c.id === columnId ? { ...column, alignment: c.alignment } : c))
       );
       return column;
     },
-    [dbAdapter, columns]
+    [actions, dbAdapter, columns]
   );
 
   const deleteColumn = useCallback(
     async (columnId: string) => {
-      await dbAdapter.deleteColumn(columnId);
+      const deleteFn = actions?.deleteColumn
+        ?? (dbAdapter ? (id: string) => dbAdapter.deleteColumn(id) : undefined);
+      if (!deleteFn) throw new Error('No deleteColumn action or dbAdapter available');
+      await deleteFn(columnId);
       setColumns((prev) => prev.filter((c) => c.id !== columnId));
     },
-    [dbAdapter]
+    [actions, dbAdapter]
   );
 
   const reorderColumns = useCallback(
     async (columnIds: string[]) => {
-      await dbAdapter.reorderColumns(tableId, columnIds);
-      // Re-fetch to get updated positions
-      await fetchColumns();
+      const reorderFn = actions?.reorderColumns
+        ?? (dbAdapter ? (tId: string, ids: string[]) => dbAdapter.reorderColumns(tId, ids) : undefined);
+      if (!reorderFn) throw new Error('No reorderColumns action or dbAdapter available');
+      await reorderFn(tableId, columnIds);
+      // Re-fetch to get updated positions (only if adapter available)
+      if (dbAdapter) {
+        await fetchColumns();
+      } else {
+        // Reorder local state when no adapter
+        setColumns((prev) => {
+          const colMap = new Map(prev.map((c) => [c.id, c]));
+          return columnIds
+            .map((id, index) => {
+              const col = colMap.get(id);
+              return col ? { ...col, position: index } : null;
+            })
+            .filter((c): c is Column => c !== null);
+        });
+      }
     },
-    [dbAdapter, tableId, fetchColumns]
+    [actions, dbAdapter, tableId, fetchColumns]
   );
 
   const getSelectOptions = useCallback(
     async (columnId: string) => {
-      return dbAdapter.getSelectOptions(columnId);
+      const getFn = actions?.getSelectOptions
+        ?? (dbAdapter ? (id: string) => dbAdapter.getSelectOptions(id) : undefined);
+      if (!getFn) throw new Error('No getSelectOptions action or dbAdapter available');
+      return getFn(columnId);
     },
-    [dbAdapter]
+    [actions, dbAdapter]
   );
 
   const addSelectOption = useCallback(
     async (input: Omit<CreateSelectOptionInput, 'columnId'> & { columnId: string }) => {
-      return dbAdapter.createSelectOption(input);
+      const createFn = actions?.createSelectOption
+        ?? (dbAdapter ? (i: CreateSelectOptionInput) => dbAdapter.createSelectOption(i) : undefined);
+      if (!createFn) throw new Error('No createSelectOption action or dbAdapter available');
+      return createFn(input);
     },
-    [dbAdapter]
+    [actions, dbAdapter]
   );
 
   const updateSelectOption = useCallback(
     async (optionId: string, updates: UpdateSelectOptionInput) => {
-      return dbAdapter.updateSelectOption(optionId, updates);
+      const updateFn = actions?.updateSelectOption
+        ?? (dbAdapter ? (id: string, u: UpdateSelectOptionInput) => dbAdapter.updateSelectOption(id, u) : undefined);
+      if (!updateFn) throw new Error('No updateSelectOption action or dbAdapter available');
+      return updateFn(optionId, updates);
     },
-    [dbAdapter]
+    [actions, dbAdapter]
   );
 
   const deleteSelectOption = useCallback(
     async (optionId: string) => {
-      await dbAdapter.deleteSelectOption(optionId);
+      const deleteFn = actions?.deleteSelectOption
+        ?? (dbAdapter ? (id: string) => dbAdapter.deleteSelectOption(id) : undefined);
+      if (!deleteFn) throw new Error('No deleteSelectOption action or dbAdapter available');
+      await deleteFn(optionId);
     },
-    [dbAdapter]
+    [actions, dbAdapter]
   );
 
   return {

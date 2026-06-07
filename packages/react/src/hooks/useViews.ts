@@ -1,14 +1,15 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type {
   View,
   ViewType,
   CreateViewInput,
   UpdateViewInput,
 } from '@marlinjai/data-table-core';
-import { useDbAdapter } from '../providers/DataTableProvider';
+import { useDbAdapter, useActions } from '../providers/DataTableProvider';
 
 export interface UseViewsOptions {
   tableId: string;
+  initialViews?: View[];
 }
 
 export interface UseViewsResult {
@@ -26,14 +27,33 @@ export interface UseViewsResult {
   refresh: () => Promise<void>;
 }
 
-export function useViews({ tableId }: UseViewsOptions): UseViewsResult {
+export function useViews({ tableId, initialViews }: UseViewsOptions): UseViewsResult {
   const dbAdapter = useDbAdapter();
-  const [views, setViews] = useState<View[]>([]);
-  const [currentViewId, setCurrentViewId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const actions = useActions();
+  const hasInitialViews = initialViews !== undefined;
+
+  // Compute initial currentViewId from initialViews
+  const computeDefaultViewId = (views: View[]): string | null => {
+    if (views.length === 0) return null;
+    const defaultView = views.find((v) => v.isDefault) ?? views[0];
+    return defaultView?.id ?? null;
+  };
+
+  const [views, setViews] = useState<View[]>(initialViews ?? []);
+  const [currentViewId, setCurrentViewId] = useState<string | null>(
+    hasInitialViews ? computeDefaultViewId(initialViews!) : null
+  );
+  const [isLoading, setIsLoading] = useState(!hasInitialViews);
   const [error, setError] = useState<Error | null>(null);
+  // Track whether we've consumed initialViews to avoid re-fetching on mount
+  const initialDataConsumed = useRef(hasInitialViews);
 
   const fetchViews = useCallback(async () => {
+    if (!dbAdapter) {
+      // No adapter available — can't fetch
+      setIsLoading(false);
+      return;
+    }
     try {
       setIsLoading(true);
       setError(null);
@@ -58,12 +78,20 @@ export function useViews({ tableId }: UseViewsOptions): UseViewsResult {
   }, [dbAdapter, tableId, currentViewId]);
 
   useEffect(() => {
+    // Skip initial fetch if we already have initialViews
+    if (initialDataConsumed.current) {
+      initialDataConsumed.current = false;
+      return;
+    }
     fetchViews();
   }, [tableId]); // Only refetch when tableId changes, not on every fetchViews change
 
   const createView = useCallback(
     async (input: Omit<CreateViewInput, 'tableId'>) => {
-      const view = await dbAdapter.createView({ ...input, tableId });
+      const createFn = actions?.createView
+        ?? (dbAdapter ? (i: CreateViewInput) => dbAdapter.createView(i) : undefined);
+      if (!createFn) throw new Error('No createView action or dbAdapter available');
+      const view = await createFn({ ...input, tableId });
       setViews((prev) => {
         // If the new view is default, update other views
         if (view.isDefault) {
@@ -75,12 +103,15 @@ export function useViews({ tableId }: UseViewsOptions): UseViewsResult {
       setCurrentViewId(view.id);
       return view;
     },
-    [dbAdapter, tableId]
+    [actions, dbAdapter, tableId]
   );
 
   const updateView = useCallback(
     async (viewId: string, updates: UpdateViewInput) => {
-      const view = await dbAdapter.updateView(viewId, updates);
+      const updateFn = actions?.updateView
+        ?? (dbAdapter ? (id: string, u: UpdateViewInput) => dbAdapter.updateView(id, u) : undefined);
+      if (!updateFn) throw new Error('No updateView action or dbAdapter available');
+      const view = await updateFn(viewId, updates);
       setViews((prev) => {
         // If the updated view is now default, update other views
         if (view.isDefault) {
@@ -92,12 +123,15 @@ export function useViews({ tableId }: UseViewsOptions): UseViewsResult {
       });
       return view;
     },
-    [dbAdapter]
+    [actions, dbAdapter]
   );
 
   const deleteView = useCallback(
     async (viewId: string) => {
-      await dbAdapter.deleteView(viewId);
+      const deleteFn = actions?.deleteView
+        ?? (dbAdapter ? (id: string) => dbAdapter.deleteView(id) : undefined);
+      if (!deleteFn) throw new Error('No deleteView action or dbAdapter available');
+      await deleteFn(viewId);
       setViews((prev) => {
         const remaining = prev.filter((v) => v.id !== viewId);
         // If we deleted the current view, switch to the default or first view
@@ -110,12 +144,15 @@ export function useViews({ tableId }: UseViewsOptions): UseViewsResult {
         return remaining;
       });
     },
-    [dbAdapter, currentViewId]
+    [actions, dbAdapter, currentViewId]
   );
 
   const reorderViews = useCallback(
     async (viewIds: string[]) => {
-      await dbAdapter.reorderViews(tableId, viewIds);
+      const reorderFn = actions?.reorderViews
+        ?? (dbAdapter ? (tId: string, ids: string[]) => dbAdapter.reorderViews(tId, ids) : undefined);
+      if (!reorderFn) throw new Error('No reorderViews action or dbAdapter available');
+      await reorderFn(tableId, viewIds);
       // Reorder local state
       setViews((prev) => {
         const viewMap = new Map(prev.map((v) => [v.id, v]));
@@ -127,7 +164,7 @@ export function useViews({ tableId }: UseViewsOptions): UseViewsResult {
           .filter((v): v is View => v !== null);
       });
     },
-    [dbAdapter, tableId]
+    [actions, dbAdapter, tableId]
   );
 
   const setCurrentView = useCallback((viewId: string) => {

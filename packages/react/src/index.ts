@@ -11,9 +11,13 @@ export {
   useDbAdapter,
   useFileAdapter,
   useWorkspaceId,
+  useActions,
+  useInitialData,
   type DataTableProviderProps,
   type DataTableConfig,
   type DataTableContextValue,
+  type InitialTableData,
+  type DataTableActions,
 } from './providers/DataTableProvider';
 
 // Hooks
