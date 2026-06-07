@@ -146,8 +146,8 @@ importers:
         specifier: '*'
         version: 0.2.0
       '@marlinjai/storage-brain-sdk':
-        specifier: '*'
-        version: 0.5.1
+        specifier: ^0.9.0
+        version: 0.9.0
     devDependencies:
       tsup:
         specifier: ^8.0.1
@@ -831,6 +831,17 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
+  '@marlinjai/brain-core@0.1.0':
+    resolution: {integrity: sha512-1Ot/3uDM4Ewf18dlzgkAterIa2H5o8+V7IaknR5L4odI+zgMlPPtQ8CbjxU8Z/JnhwF3R+dqIxW+k/o0ithZPg==}
+    peerDependencies:
+      hono: ^4.0.0
+      zod: ^3.22.4
+    peerDependenciesMeta:
+      hono:
+        optional: true
+      zod:
+        optional: true
+
   '@marlinjai/clearify@1.11.2':
     resolution: {integrity: sha512-oiTZrYQJs6mhHA/FLRfSxD5vooNT/z97ruWYgvyPZBuvXqcXFt2PnPGDuX8c1jQPUeShLkI9n2uxdlLTlSEzvA==}
     hasBin: true
@@ -854,8 +865,8 @@ packages:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
 
-  '@marlinjai/storage-brain-sdk@0.5.1':
-    resolution: {integrity: sha512-J1rNm/7w8tJNjPwXcNEQkosihg/fcQsaPOtC33M4ZrRW9WfYfISKGDegtqXGkPkrAmKqLXO2b49Zb1jXeyQOnw==}
+  '@marlinjai/storage-brain-sdk@0.9.0':
+    resolution: {integrity: sha512-DxQqPv8zOVBwTFJEDN7P+qpSjdT7M0ZZj2L3Cde/8CaLUlwWAEkvILxwCxX+WUcCKyITXk/xnWjvGFiC+iDpOg==}
 
   '@mdx-js/mdx@3.1.1':
     resolution: {integrity: sha512-f6ZO2ifpwAQIpzGWaBQT2TXxPv6z3RBzQKpVftEWN78Vl/YweF1uwussDx8ECAXVtr3Rs89fKyG9YlzUs9DyGQ==}
@@ -3661,6 +3672,8 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  '@marlinjai/brain-core@0.1.0': {}
+
   '@marlinjai/clearify@1.11.2(@types/node@25.3.5)(@types/react@18.3.28)(jiti@2.6.1)(lightningcss@1.31.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.59.0)(yaml@2.8.2)':
     dependencies:
       '@mdx-js/react': 3.1.1(@types/react@18.3.28)(react@18.3.1)
@@ -3717,7 +3730,12 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@marlinjai/storage-brain-sdk@0.5.1': {}
+  '@marlinjai/storage-brain-sdk@0.9.0':
+    dependencies:
+      '@marlinjai/brain-core': 0.1.0
+    transitivePeerDependencies:
+      - hono
+      - zod
 
   '@mdx-js/mdx@3.1.1':
     dependencies:
