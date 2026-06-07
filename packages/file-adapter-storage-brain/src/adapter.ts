@@ -7,7 +7,6 @@ import type {
 import {
   StorageBrain,
   type StorageBrainConfig,
-  type ProcessingContext,
   type FileInfo,
 } from '@marlinjai/storage-brain-sdk';
 
@@ -26,13 +25,14 @@ export interface StorageBrainFileAdapterConfig {
   baseUrl?: string;
 
   /**
-   * Default processing context for uploads (default: 'default')
+   * Default free-form processing context label for uploads (default: 'default').
+   * Recognized server-side contexts include:
    * - 'invoice' - Enables OCR text extraction
    * - 'framer-site' - Enables thumbnail generation
    * - 'newsletter' - Image validation and EXIF extraction
    * - 'default' - Basic validation only
    */
-  defaultContext?: ProcessingContext;
+  defaultContext?: string;
 
   /**
    * Request timeout in milliseconds (default: 30000)
@@ -73,7 +73,7 @@ export interface StorageBrainFileAdapterConfig {
  */
 export class StorageBrainFileAdapter implements FileStorageAdapter {
   private client: StorageBrain;
-  private defaultContext: ProcessingContext;
+  private defaultContext: string;
 
   constructor(config: StorageBrainFileAdapterConfig) {
     const sdkConfig: StorageBrainConfig = {
@@ -95,7 +95,7 @@ export class StorageBrainFileAdapter implements FileStorageAdapter {
     options?: FileUploadOptions
   ): Promise<UploadedFile> {
     // Determine the context - allow override via options
-    const context = (options?.context as ProcessingContext) ?? this.defaultContext;
+    const context = (options?.context as string) ?? this.defaultContext;
 
     // Upload to Storage Brain
     const result = await this.client.upload(file, {
