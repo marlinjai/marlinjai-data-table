@@ -1,6 +1,6 @@
 {
   "name": "@marlinjai/data-table-adapter-prisma",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Prisma-based PostgreSQL adapter for data-table with real table columns",
   "author": "marlinjai",
   "license": "MIT",
@@ -40,8 +40,8 @@
     "prisma:generate": "prisma generate"
   },
   "dependencies": {
-    "@marlinjai/data-table-core": "workspace:*",
-    "@marlinjai/data-table-adapter-shared": "workspace:*",
+    "@marlinjai/data-table-core": "workspace:^",
+    "@marlinjai/data-table-adapter-shared": "workspace:^",
     "@prisma/client": "^6.9.0"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 {
   "name": "@marlinjai/data-table-adapter-d1",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Cloudflare D1 adapter for @marlinjai/data-table",
   "author": "marlinjai",
   "license": "MIT",
@@ -37,8 +37,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@marlinjai/data-table-core": "workspace:*",
-    "@marlinjai/data-table-adapter-shared": "workspace:*"
+    "@marlinjai/data-table-core": "workspace:^",
+    "@marlinjai/data-table-adapter-shared": "workspace:^"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240117.0",
