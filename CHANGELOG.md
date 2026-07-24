@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`@marlinjai/data-table-adapter-data-brain`** — Use `adapter-d1` or `adapter-prisma` directly. Data Brain service is being archived; all consumers have been migrated to direct adapter usage.
 
+## [react-0.4.1] - 2026-07-24
+
+### Fixed
+
+- **`@marlinjai/data-table-react`** — single-click cell editing: activating a cell no longer blurs the editor that the same click opened (text/number cells needed a second click to edit); keyboard handler now treats any focused input inside the grid as editing, so arrows move the caret, not the cell focus
+
 ## [react-0.4.0] - 2026-07-24
 
 ### Added

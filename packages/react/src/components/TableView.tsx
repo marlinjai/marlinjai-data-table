@@ -513,7 +513,9 @@ export function TableView({
       const tag = (e.target as HTMLElement).tagName;
       const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable;
 
-      if (isEditingCell && isInput) {
+      // Any focused input inside the grid means the user is editing, whether it
+      // was entered via Enter (isEditingCell) or a direct click on the cell.
+      if (isInput) {
         if (e.key === 'Escape') {
           e.preventDefault();
           setIsEditingCell(false);
@@ -677,16 +679,23 @@ export function TableView({
   // When active cell changes: blur any focused input (commits edits) and scroll into view
   useEffect(() => {
     if (activeCell) {
-      // Blur any currently focused input to commit edits from the previous cell
-      const focused = document.activeElement as HTMLElement | null;
-      if (focused && tableContainerRef.current?.contains(focused) && focused !== tableContainerRef.current) {
-        focused.blur();
-      }
-      setIsEditingCell(false);
-      // Scroll active cell into view
+      // Blur any focused input OUTSIDE the newly active cell to commit edits
+      // from the previous cell. Inputs inside the active cell are left alone:
+      // a single click on a text cell both activates it AND opens its editor,
+      // and blurring here killed that editor, forcing a second click to edit.
       requestAnimationFrame(() => {
-        const cell = tableContainerRef.current?.querySelector('[data-cell-active="true"]');
-        cell?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        const focused = document.activeElement as HTMLElement | null;
+        const activeCellEl = tableContainerRef.current?.querySelector('[data-cell-active="true"]');
+        if (
+          focused &&
+          tableContainerRef.current?.contains(focused) &&
+          focused !== tableContainerRef.current &&
+          !(activeCellEl && activeCellEl.contains(focused))
+        ) {
+          focused.blur();
+        }
+        // Scroll active cell into view
+        activeCellEl?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       });
     }
   }, [activeCell]);
