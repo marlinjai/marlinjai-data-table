@@ -53,6 +53,13 @@ export interface TableViewProps {
   // Selection
   selectedRows?: Set<string>;
   onSelectionChange?: (selectedRows: Set<string>) => void;
+  /**
+   * Fires whenever the keyboard-focused row changes (the row of the active
+   * cell), with `null` when focus leaves the grid. Lets consumers treat the
+   * focused row as an implicit single-row selection (Notion-style) for bulk
+   * actions without requiring a checkbox tick.
+   */
+  onActiveRowChange?: (rowId: string | null) => void;
 
   // Loading states
   isLoading?: boolean;
@@ -137,6 +144,7 @@ export function TableView({
   onSortChange,
   selectedRows = new Set(),
   onSelectionChange,
+  onActiveRowChange,
   isLoading,
   hasMore,
   onLoadMore,
@@ -205,6 +213,9 @@ export function TableView({
   const [activeCell, setActiveCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
   const [isEditingCell, setIsEditingCell] = useState(false);
   const activeCellInitialized = useRef(false);
+  // Anchor row index for Shift+Arrow range selection (Notion-style): set on the
+  // first Shift+Arrow from the focused row, cleared by any plain navigation.
+  const selectionAnchorRef = useRef<number | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
@@ -564,15 +575,32 @@ export function TableView({
       const maxRow = visibleDataRows.length - 1;
       const maxCol = orderedColumns.length - 1;
 
+      // Shift+Arrow up/down: extend a contiguous row selection from the focused
+      // row (Notion-style). The anchor is the row focused when the first
+      // Shift+Arrow was pressed; the selection is always anchor..focus.
+      if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && onSelectionChange && maxRow >= 0) {
+        e.preventDefault();
+        const current = activeCell?.rowIndex ?? 0;
+        if (selectionAnchorRef.current === null) selectionAnchorRef.current = current;
+        const next = e.key === 'ArrowUp' ? Math.max(0, current - 1) : Math.min(maxRow, current + 1);
+        setActiveCell((prev) => (prev ? { ...prev, rowIndex: next } : { rowIndex: next, colIndex: 0 }));
+        const anchor = selectionAnchorRef.current;
+        const [lo, hi] = anchor <= next ? [anchor, next] : [next, anchor];
+        onSelectionChange(new Set(visibleDataRows.slice(lo, hi + 1).map((r) => r.id)));
+        return;
+      }
+
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();
+          selectionAnchorRef.current = null;
           setActiveCell((prev) =>
             prev ? { ...prev, rowIndex: Math.max(0, prev.rowIndex - 1) } : { rowIndex: 0, colIndex: 0 }
           );
           break;
         case 'ArrowDown':
           e.preventDefault();
+          selectionAnchorRef.current = null;
           setActiveCell((prev) =>
             prev ? { ...prev, rowIndex: Math.min(maxRow, prev.rowIndex + 1) } : { rowIndex: 0, colIndex: 0 }
           );
@@ -627,6 +655,7 @@ export function TableView({
           break;
         case 'Escape':
           e.preventDefault();
+          selectionAnchorRef.current = null;
           setActiveCell(null);
           setIsEditingCell(false);
           break;
@@ -634,7 +663,7 @@ export function TableView({
           break;
       }
     },
-    [activeCell, isEditingCell, visibleDataRows.length, orderedColumns.length, readOnly]
+    [activeCell, isEditingCell, visibleDataRows, orderedColumns.length, readOnly, onSelectionChange]
   );
 
   // Pre-select first cell when rows become available (only if keyboard nav enabled)
@@ -664,11 +693,22 @@ export function TableView({
 
   const handleCellClick = useCallback(
     (rowIndex: number, colIndex: number) => {
+      selectionAnchorRef.current = null;
       setActiveCell({ rowIndex, colIndex });
       setIsEditingCell(false);
     },
     []
   );
+
+  // Surface the focused row to the consumer (implicit single-row selection).
+  useEffect(() => {
+    if (!onActiveRowChange) return;
+    const rowId =
+      activeCell !== null && activeCell.rowIndex >= 0 && activeCell.rowIndex < visibleDataRows.length
+        ? visibleDataRows[activeCell.rowIndex].id
+        : null;
+    onActiveRowChange(rowId);
+  }, [activeCell, visibleDataRows, onActiveRowChange]);
 
   const totalColumns = columns.length + (onSelectionChange ? 1 : 0) + (onDeleteRow ? 1 : 0) + (onAddProperty ? 1 : 0);
 
@@ -676,13 +716,21 @@ export function TableView({
   const renderDataRow = (row: Row, depth: number, hasChildren: boolean, rowIndex?: number) => {
     const isExpanded = !localCollapsedParents.has(row.id);
     const indentPx = depth * 24; // 24px per nesting level
+    // The keyboard-focused row gets a subtle highlight (checkbox selection wins).
+    const isRowActive =
+      enableKeyboardNav && activeCell !== null && rowIndex !== undefined && activeCell.rowIndex === rowIndex;
 
     return (
       <tr
         key={row.id}
         data-row-id={row.id}
+        data-row-active={isRowActive || undefined}
         style={{
-          backgroundColor: selectedRows.has(row.id) ? 'var(--dt-bg-selected)' : 'var(--dt-bg-primary)',
+          backgroundColor: selectedRows.has(row.id)
+            ? 'var(--dt-bg-selected)'
+            : isRowActive
+              ? 'var(--dt-bg-row-active, var(--dt-bg-secondary))'
+              : 'var(--dt-bg-primary)',
         }}
       >
         {onSelectionChange && (

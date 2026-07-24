@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`@marlinjai/data-table-adapter-data-brain`** — Use `adapter-d1` or `adapter-prisma` directly. Data Brain service is being archived; all consumers have been migrated to direct adapter usage.
 
+## [react-0.4.0] - 2026-07-24
+
+### Added
+
+- **`@marlinjai/data-table-react`** — Notion-style keyboard row selection in `TableView`
+  - Shift+ArrowUp/Down extends a contiguous row selection anchored at the keyboard-focused row; plain navigation clears the anchor
+  - New `onActiveRowChange(rowId | null)` callback so consumers can treat the focused row as an implicit single-row selection for bulk actions
+  - The focused row is highlighted via the new `--dt-bg-row-active` theme variable (light + dark values shipped; checkbox selection still wins)
+
 ## [0.4.0] - 2026-03-22
 
 ### Added
