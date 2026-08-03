@@ -51,6 +51,7 @@ export function FileCell({
 }: FileCellProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [cellError, setCellError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -85,17 +86,18 @@ export function FileCell({
       // Validate file type if config specifies allowed types
       if (config?.allowedTypes?.length) {
         if (!config.allowedTypes.includes(selectedFile.type)) {
-          alert(`File type ${selectedFile.type} is not allowed.`);
+          setCellError(`File type ${selectedFile.type} is not allowed.`);
           return;
         }
       }
 
       // Validate file size
       if (config?.maxSizeBytes && selectedFile.size > config.maxSizeBytes) {
-        alert(`File is too large. Maximum size is ${formatFileSize(config.maxSizeBytes)}.`);
+        setCellError(`File is too large. Max ${formatFileSize(config.maxSizeBytes)}.`);
         return;
       }
 
+      setCellError(null);
       setIsUploading(true);
       setUploadProgress(0);
 
@@ -105,7 +107,7 @@ export function FileCell({
         onChange(newFiles);
       } catch (error) {
         console.error('Upload failed:', error);
-        alert('Failed to upload file. Please try again.');
+        setCellError('Upload failed. Please try again.');
       } finally {
         setIsUploading(false);
         setUploadProgress(0);
@@ -128,7 +130,7 @@ export function FileCell({
         onChange(newFiles);
       } catch (error) {
         console.error('Delete failed:', error);
-        alert('Failed to delete file. Please try again.');
+        setCellError('Delete failed. Please try again.');
       }
     },
     [files, onChange, onDelete]
@@ -209,7 +211,7 @@ export function FileCell({
               alignItems: 'center',
               gap: '4px',
               padding: '2px 6px',
-              backgroundColor: '#f3f4f6',
+              backgroundColor: 'var(--dt-bg-secondary)',
               borderRadius: '4px',
               fontSize: '12px',
             }}
@@ -242,8 +244,22 @@ export function FileCell({
           </div>
         ))
       ) : (
-        <span style={{ color: '#9ca3af', fontSize: '13px' }}>
+        <span style={{ color: 'var(--dt-text-secondary)', fontSize: '13px' }}>
           {readOnly ? 'No files' : 'Add files...'}
+        </span>
+      )}
+
+      {/* Inline error (never a blocking alert) */}
+      {cellError && (
+        <span
+          style={{ color: '#ef4444', fontSize: '11px' }}
+          title={cellError}
+          onClick={(e) => {
+            e.stopPropagation();
+            setCellError(null);
+          }}
+        >
+          {cellError}
         </span>
       )}
 
@@ -255,10 +271,10 @@ export function FileCell({
             alignItems: 'center',
             gap: '4px',
             padding: '2px 6px',
-            backgroundColor: '#dbeafe',
+            backgroundColor: 'var(--dt-bg-secondary)',
             borderRadius: '4px',
             fontSize: '12px',
-            color: '#1d4ed8',
+            color: 'var(--dt-accent, #3b82f6)',
           }}
         >
           Uploading...
@@ -311,10 +327,10 @@ export function FileCell({
                     padding: '12px',
                     border: '2px dashed #d1d5db',
                     borderRadius: '6px',
-                    backgroundColor: isUploading ? '#f9fafb' : 'white',
+                    backgroundColor: 'var(--dt-bg-primary)',
                     cursor: isUploading ? 'not-allowed' : 'pointer',
                     fontSize: '13px',
-                    color: '#6b7280',
+                    color: 'var(--dt-text-secondary)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -324,7 +340,7 @@ export function FileCell({
                   <span style={{ fontSize: '20px' }}>📤</span>
                   <span>{isUploading ? 'Uploading...' : 'Click or drag to upload'}</span>
                   {config?.maxSizeBytes && (
-                    <span style={{ fontSize: '11px', color: '#9ca3af' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--dt-text-secondary)' }}>
                       Max size: {formatFileSize(config.maxSizeBytes)}
                     </span>
                   )}
@@ -367,7 +383,7 @@ export function FileCell({
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          backgroundColor: '#f3f4f6',
+                          backgroundColor: 'var(--dt-bg-secondary)',
                           borderRadius: '4px',
                           fontSize: '20px',
                           flexShrink: 0,
@@ -390,7 +406,7 @@ export function FileCell({
                       >
                         {file.originalName}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--dt-text-secondary)' }}>
                         {formatFileSize(file.sizeBytes)}
                       </div>
                     </div>
@@ -404,7 +420,7 @@ export function FileCell({
                         rel="noopener noreferrer"
                         style={{
                           padding: '4px 8px',
-                          color: '#6b7280',
+                          color: 'var(--dt-text-secondary)',
                           textDecoration: 'none',
                           fontSize: '12px',
                           borderRadius: '4px',
@@ -426,7 +442,7 @@ export function FileCell({
                             padding: '4px 8px',
                             border: 'none',
                             background: 'none',
-                            color: '#9ca3af',
+                            color: 'var(--dt-text-secondary)',
                             cursor: 'pointer',
                             fontSize: '12px',
                             borderRadius: '4px',
@@ -436,7 +452,7 @@ export function FileCell({
                             (e.currentTarget.style.color = '#ef4444')
                           }
                           onMouseLeave={(e) =>
-                            (e.currentTarget.style.color = '#9ca3af')
+                            (e.currentTarget.style.color = 'var(--dt-text-secondary)')
                           }
                         >
                           🗑️
@@ -454,7 +470,7 @@ export function FileCell({
                 style={{
                   padding: '24px',
                   textAlign: 'center',
-                  color: '#9ca3af',
+                  color: 'var(--dt-text-secondary)',
                   fontSize: '13px',
                 }}
               >
@@ -467,7 +483,7 @@ export function FileCell({
               style={{
                 padding: '8px 12px',
                 borderTop: '1px solid #e5e7eb',
-                backgroundColor: '#f9fafb',
+                backgroundColor: 'var(--dt-bg-secondary)',
                 textAlign: 'right',
               }}
             >

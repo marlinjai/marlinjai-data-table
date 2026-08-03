@@ -61,10 +61,10 @@ importers:
   packages/adapter-d1:
     dependencies:
       '@marlinjai/data-table-adapter-shared':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../adapter-shared
       '@marlinjai/data-table-core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
     devDependencies:
       '@cloudflare/workers-types':
@@ -93,10 +93,10 @@ importers:
   packages/adapter-prisma:
     dependencies:
       '@marlinjai/data-table-adapter-shared':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../adapter-shared
       '@marlinjai/data-table-core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@prisma/client':
         specifier: ^6.9.0
@@ -118,7 +118,7 @@ importers:
   packages/adapter-shared:
     dependencies:
       '@marlinjai/data-table-core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
     devDependencies:
       tsup:
@@ -159,8 +159,8 @@ importers:
   packages/react:
     dependencies:
       '@marlinjai/data-table-core':
-        specifier: '*'
-        version: 0.2.0
+        specifier: ^0.3.1
+        version: 0.3.1
     devDependencies:
       '@types/react':
         specifier: ^18.2.0
@@ -859,6 +859,9 @@ packages:
   '@marlinjai/data-table-core@0.2.0':
     resolution: {integrity: sha512-fACvrQm8p0B6gLAesIQPcdrJ3J7xDj8czTwFUnakWBZAXMCAbKqRtot8wibowJbR85n+TQBX9CZjgqgHk2R4rw==}
 
+  '@marlinjai/data-table-core@0.3.1':
+    resolution: {integrity: sha512-mogaPRSEmEUB76xCw5Jy2KmqeFiYFN6rWdUgTrXA8u75RQRXSdeDZ9MVADAeTL+C/m9MqEgxENNnn8iC+QPjHg==}
+
   '@marlinjai/data-table-react@0.2.0':
     resolution: {integrity: sha512-SJ38fSNN8PKvmAalNpf7XxJccuyJzwgFu/GyhWjPMTBmScu3WxuozHyAY6N3jo72Jmhj2nmYesp73cu8u84NZw==}
     peerDependencies:
@@ -1358,6 +1361,7 @@ packages:
 
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
+    deprecated: Potential CWE-502 - Update to 1.3.1 or higher
 
   '@vitejs/plugin-react@4.7.0':
     resolution: {integrity: sha512-gUu9hwfWvvEDBBmgtAowQCojwZmJ5mcLn3aufeCsitijs3+f2NsrPtlAWIR6OPiqljl96GVCUbLe0HyqIpVaoA==}
@@ -3723,6 +3727,8 @@ snapshots:
       '@marlinjai/data-table-core': 0.2.0
 
   '@marlinjai/data-table-core@0.2.0': {}
+
+  '@marlinjai/data-table-core@0.3.1': {}
 
   '@marlinjai/data-table-react@0.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:

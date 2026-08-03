@@ -90,6 +90,10 @@ export function useRows({
           limit: pageSize,
           offset: append ? offsetRef.current : 0,
           includeArchived,
+          // File-column cells live in the file-reference junction, not in row
+          // storage; without this, file cells always come back empty. Adapters
+          // without file support ignore it.
+          include: ['files'],
         };
 
         const result: QueryResult<Row> = await dbAdapter.getRows(tableId, query);

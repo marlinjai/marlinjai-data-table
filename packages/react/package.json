@@ -1,6 +1,6 @@
 {
   "name": "@marlinjai/data-table-react",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "React components for @marlinjai/data-table",
   "author": "marlinjai",
   "license": "MIT",
@@ -43,7 +43,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@marlinjai/data-table-core": "*"
+    "@marlinjai/data-table-core": "^0.3.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
