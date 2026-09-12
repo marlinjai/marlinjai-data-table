@@ -1,0 +1,53 @@
+# Publishes the monorepo's public packages to npm via npm Trusted Publishing
+# (OIDC): no NPM_TOKEN, the id-token below is the credential. Same mechanism as
+# email-mcp and auth-brain, adapted for this pnpm monorepo with several
+# independently-versioned packages.
+#
+# Each package.json's version is the source of truth. scripts/publish-packages.mjs
+# publishes, in dependency order, only the packages whose exact version is not
+# already on npm, so this is safe to re-run and a release that bumped one
+# package publishes only that one.
+#
+# ONE-TIME npm-side setup (per package, done by a human on npmjs.com, because it
+# is an account-level trust grant): in each package's Settings, add a Trusted
+# Publisher pointing at this repository (marlinjai/marlinjai-data-table),
+# workflow `.github/workflows/publish.yml`, no environment. Until that exists a
+# publish fails with a 404 on the PUT. A package that has never been published
+# (currently @marlinjai/data-table-file-adapter-storage-brain) needs one manual
+# first publish before a Trusted Publisher can be attached to it.
+name: Publish to npm
+
+on:
+  # A version tag is the usual trigger; versions live in each package.json, so
+  # the tag is just a marker and the script decides what is new. Both tag
+  # styles already used in this repo (v0.4.0, react-v0.4.2) match.
+  push:
+    tags:
+      - 'v*'
+      - '*-v*'
+      - '*@*' # e.g. data-table-react@0.5.0
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write # required for npm Trusted Publishing (OIDC); no NPM_TOKEN needed
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          # Node 22: npm@latest (12.x) no longer installs on Node 20.
+          node-version: 22
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+      # Trusted Publishing needs npm CLI >= 11.5.1; the bundled one is older.
+      - run: npm install -g npm@latest
+      - run: pnpm install --frozen-lockfile
+      # The root build script already runs the packages in dependency order.
+      # pnpm pack does not run prepublishOnly, and `files` ships dist.
+      - run: pnpm build
+      - run: node scripts/publish-packages.mjs
