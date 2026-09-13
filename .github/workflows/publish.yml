@@ -47,6 +47,9 @@ jobs:
       # Trusted Publishing needs npm CLI >= 11.5.1; the bundled one is older.
       - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
+      # adapter-prisma's types come from the generated Prisma client; without
+      # this its tsup DTS build fails in a fresh checkout.
+      - run: pnpm --filter @marlinjai/data-table-adapter-prisma prisma:generate
       # The root build script already runs the packages in dependency order.
       # pnpm pack does not run prepublishOnly, and `files` ships dist.
       - run: pnpm build

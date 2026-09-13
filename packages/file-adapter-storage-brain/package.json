@@ -1,6 +1,11 @@
 {
   "name": "@marlinjai/data-table-file-adapter-storage-brain",
   "version": "0.2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marlinjai/marlinjai-data-table.git",
+    "directory": "packages/file-adapter-storage-brain"
+  },
   "description": "Storage Brain file adapter for @marlinjai/data-table",
   "publishConfig": {
     "access": "public"
