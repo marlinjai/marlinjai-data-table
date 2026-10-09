@@ -1,0 +1,41 @@
+name: Verify Prisma adapter
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: data_table_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U test -d data_table_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      # Disposable database, never credentials for a deployed environment.
+      TEST_DATABASE_URL: postgresql://test:test@localhost:5432/data_table_test?connection_limit=1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @marlinjai/data-table-adapter-prisma prisma:generate
+      - run: pnpm --filter @marlinjai/data-table-core build
+      - run: pnpm --filter @marlinjai/data-table-adapter-shared build
+      - run: pnpm --filter @marlinjai/data-table-adapter-prisma typecheck
+      - run: pnpm --filter @marlinjai/data-table-adapter-prisma test:db
+      - run: pnpm --filter @marlinjai/data-table-adapter-prisma build

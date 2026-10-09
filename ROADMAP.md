@@ -71,6 +71,13 @@ This document outlines the current implementation status and planned features fo
 
 ---
 
+## Reliability repair
+
+- [ ] Resolve the three Prisma adapter defects reported by receipt-ocr-app: duplicate
+  columns under concurrent creation, row reads failing after a schema edit, and
+  unknown cell writes silently succeeding. Publish and verify the receipts upgrade.
+  [Plan](docs/plans/2026-10-09-prisma-adapter-integrity.md) (2026-10-09)
+
 ## Planned Features
 
 ### Medium Priority

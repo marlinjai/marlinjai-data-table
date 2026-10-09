@@ -191,33 +191,36 @@ export class PrismaAdapter extends BaseDatabaseAdapter {
   // =========================================================================
 
   async createColumn(input: CreateColumnInput): Promise<Column> {
-    let position = input.position;
-    if (position === undefined) {
-      const maxPos = await this.prisma.dtColumn.aggregate({
-        where: { tableId: input.tableId },
-        _max: { position: true },
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockTable(tx, input.tableId);
+      await this.requireAvailableColumnName(tx, input.tableId, input.name);
+      await ensureRealTable(tx, input.tableId);
+
+      let position = input.position;
+      if (position === undefined) {
+        const maxPos = await tx.dtColumn.aggregate({
+          where: { tableId: input.tableId },
+          _max: { position: true },
+        });
+        position = (maxPos._max.position ?? -1) + 1;
+      }
+
+      const column = await tx.dtColumn.create({
+        data: {
+          tableId: input.tableId,
+          name: input.name,
+          type: input.type,
+          position,
+          width: input.width ?? 200,
+          isPrimary: input.isPrimary ?? false,
+          config: toJsonInput(input.config),
+        },
       });
-      position = (maxPos._max.position ?? -1) + 1;
-    }
-
-    const column = await this.prisma.dtColumn.create({
-      data: {
-        tableId: input.tableId,
-        name: input.name,
-        type: input.type,
-        position,
-        width: input.width ?? 200,
-        isPrimary: input.isPrimary ?? false,
-        config: toJsonInput(input.config),
-      },
+      if (isScalarType(input.type)) {
+        await addColumn(tx, input.tableId, column.id);
+      }
+      return this.mapColumn(column);
     });
-
-    // Add real SQL column using the generated column ID
-    if (isScalarType(input.type)) {
-      await addColumn(this.prisma, input.tableId, column.id);
-    }
-
-    return this.mapColumn(column);
   }
 
   async getColumns(tableId: string): Promise<Column[]> {
@@ -234,18 +237,24 @@ export class PrismaAdapter extends BaseDatabaseAdapter {
   }
 
   async updateColumn(columnId: string, updates: UpdateColumnInput): Promise<Column> {
-    const column = await this.prisma.dtColumn.update({
-      where: { id: columnId },
-      data: {
-        ...(updates.name !== undefined ? { name: updates.name } : {}),
-        ...(updates.width !== undefined ? { width: updates.width } : {}),
-        ...(updates.config !== undefined
-          ? { config: toJsonInput(updates.config) }
-          : {}),
-        ...(updates.alignment !== undefined ? { alignment: updates.alignment } : {}),
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.dtColumn.findUnique({ where: { id: columnId } });
+      if (!existing) throw new Error('Column not found');
+      await this.lockTable(tx, existing.tableId);
+      if (updates.name !== undefined) {
+        await this.requireAvailableColumnName(tx, existing.tableId, updates.name, columnId);
+      }
+      const column = await tx.dtColumn.update({
+        where: { id: columnId },
+        data: {
+          ...(updates.name !== undefined ? { name: updates.name } : {}),
+          ...(updates.width !== undefined ? { width: updates.width } : {}),
+          ...(updates.config !== undefined ? { config: toJsonInput(updates.config) } : {}),
+          ...(updates.alignment !== undefined ? { alignment: updates.alignment } : {}),
+        },
+      });
+      return this.mapColumn(column);
     });
-    return this.mapColumn(column);
   }
 
   async deleteColumn(columnId: string): Promise<void> {
@@ -367,6 +376,7 @@ export class PrismaAdapter extends BaseDatabaseAdapter {
     // Get columns for type-aware serialization
     const columns = await this.getColumns(input.tableId);
     const columnMap = new Map(columns.map((c) => [c.id, c]));
+    this.requireKnownCells(cells, columnMap);
 
     // Build INSERT
     const colNames = ['id', '_archived', '_created_at', '_updated_at'];
@@ -432,16 +442,14 @@ export class PrismaAdapter extends BaseDatabaseAdapter {
 
     for (const { id: tableId } of tableIds) {
       const tableName = safeTableName(tableId);
-      const rows = await this.prisma
-        .$queryRawUnsafe<Record<string, unknown>[]>(
-          `SELECT * FROM ${tableName} WHERE id = $1`,
-          rowId,
-        )
-        .catch(() => []);
+      const columns = await this.getColumns(tableId);
+      const rows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(
+        `SELECT ${this.rowProjection(columns)} FROM ${tableName} WHERE id = $1`,
+        rowId,
+      );
 
       if (rows.length > 0) {
         const row = rows[0]!;
-        const columns = await this.getColumns(tableId);
         const mappedRow = this.mapRealRow(row, tableId, columns);
 
         // Eager-load junction data
@@ -517,7 +525,7 @@ export class PrismaAdapter extends BaseDatabaseAdapter {
 
     // Data query
     const rawRows = await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(
-      `SELECT * FROM ${tableName} WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ${limit} OFFSET ${offset}`,
+      `SELECT ${this.rowProjection(columns)} FROM ${tableName} WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ${limit} OFFSET ${offset}`,
       ...allParams,
     );
 
@@ -560,6 +568,7 @@ export class PrismaAdapter extends BaseDatabaseAdapter {
     const tableName = safeTableName(existingRow.tableId);
     const columns = await this.getColumns(existingRow.tableId);
     const columnMap = new Map(columns.map((c) => [c.id, c]));
+    this.requireKnownCells(cells, columnMap);
     const now = new Date().toISOString();
 
     // Build UPDATE SET clause for scalar columns
@@ -892,6 +901,40 @@ export class PrismaAdapter extends BaseDatabaseAdapter {
 
   async transaction<T>(fn: (tx: DatabaseAdapter) => Promise<T>): Promise<T> {
     return fn(this);
+  }
+
+  private async lockTable(tx: Prisma.TransactionClient, tableId: string): Promise<void> {
+    const rows = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+      'SELECT id FROM dt_tables WHERE id = $1 FOR UPDATE',
+      tableId,
+    );
+    if (rows.length === 0) throw new Error('Table not found');
+  }
+
+  private async requireAvailableColumnName(
+    tx: Prisma.TransactionClient,
+    tableId: string,
+    name: string,
+    exceptId?: string,
+  ): Promise<void> {
+    const duplicate = await tx.dtColumn.findFirst({
+      where: { tableId, name, ...(exceptId ? { id: { not: exceptId } } : {}) },
+      select: { id: true },
+    });
+    if (duplicate) throw new Error('A column with this name already exists in the table');
+  }
+
+  private requireKnownCells(cells: Record<string, CellValue>, columns: Map<string, Column>): void {
+    for (const columnId of Object.keys(cells)) {
+      if (!columns.has(columnId)) throw new Error('Unknown column in row cells');
+    }
+  }
+
+  private rowProjection(columns: Column[]): string {
+    return [
+      'id', '_archived', '_created_at', '_updated_at', 'parent_row_id',
+      ...columns.filter((column) => isScalarType(column.type)).map((column) => safeColumnName(column.id)),
+    ].join(', ');
   }
 
   // =========================================================================

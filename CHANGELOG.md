@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Prisma adapter 0.2.3 serializes duplicate-name checks and physical column creation,
+  keeps row reads valid after schema edits, propagates database failures, and rejects
+  unknown cell identifiers before mutations.
+- Repaired the Prisma integration tests for the current adapter interface and added
+  a required PostgreSQL test workflow with disposable-database safeguards.
+
 ### Deprecated
 
 - **`@marlinjai/data-table-adapter-data-brain`** — Use `adapter-d1` or `adapter-prisma` directly. Data Brain service is being archived; all consumers have been migrated to direct adapter usage.
