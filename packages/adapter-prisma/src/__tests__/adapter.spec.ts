@@ -191,8 +191,13 @@ describeWithDb('PrismaAdapter', () => {
     });
 
     it('serializes competing column creates and leaves exactly one physical column', async () => {
-      const outcomes = await Promise.allSettled(Array.from({ length: 5 }, () =>
-        adapter.createColumn({ tableId, name: 'Concurrent', type: 'text' })));
+      // Separate clients matter: a one-connection pool would serialize these
+      // calls itself and hide a missing database lock.
+      const clients = Array.from({ length: 5 }, () =>
+        new PrismaClient({ datasources: { db: { url: DATABASE_URL } } }));
+      const outcomes = await Promise.allSettled(clients.map((client) =>
+        new PrismaAdapter({ prisma: client }).createColumn({ tableId, name: 'Concurrent', type: 'text' })));
+      await Promise.all(clients.map((client) => client.$disconnect()));
       expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
       const failures = outcomes.filter((outcome) => outcome.status === 'rejected');
       expect(failures).toHaveLength(4);
@@ -208,10 +213,12 @@ describeWithDb('PrismaAdapter', () => {
     it('rejects competing renames but allows the same name in another table', async () => {
       const first = await adapter.createColumn({ tableId, name: 'First', type: 'text' });
       const second = await adapter.createColumn({ tableId, name: 'Second', type: 'text' });
+      const otherClient = new PrismaClient({ datasources: { db: { url: DATABASE_URL } } });
       const outcomes = await Promise.allSettled([
         adapter.updateColumn(first.id, { name: 'Shared' }),
-        adapter.updateColumn(second.id, { name: 'Shared' }),
+        new PrismaAdapter({ prisma: otherClient }).updateColumn(second.id, { name: 'Shared' }),
       ]);
+      await otherClient.$disconnect();
       expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
       expect((await adapter.getColumns(tableId)).filter((column) => column.name === 'Shared')).toHaveLength(1);
       const other = await adapter.createTable({ workspaceId, name: 'Other' });
