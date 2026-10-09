@@ -5,7 +5,7 @@
  * where possible (PostgreSQL supports this).
  */
 
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import type { Column } from '@marlinjai/data-table-core';
 import {
   safeTableName,
@@ -19,7 +19,7 @@ import {
  * Scalar user columns are added as TEXT.
  */
 export async function createRealTable(
-  prisma: PrismaClient,
+  prisma: Prisma.TransactionClient,
   tableId: string,
   scalarColumns: Column[],
 ): Promise<void> {
@@ -59,7 +59,7 @@ export async function dropRealTable(
  * Uses transactional DDL on PostgreSQL: DDL + metadata in one transaction.
  */
 export async function addColumn(
-  prisma: PrismaClient,
+  prisma: Prisma.TransactionClient,
   tableId: string,
   columnId: string,
 ): Promise<void> {

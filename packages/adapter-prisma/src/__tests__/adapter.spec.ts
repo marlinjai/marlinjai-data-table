@@ -1,18 +1,27 @@
 /**
  * Integration tests for PrismaAdapter.
  *
- * Requires a running PostgreSQL instance. Set DATABASE_URL to connect.
+ * Requires a running PostgreSQL instance. Set TEST_DATABASE_URL to a disposable local database ending in _test.
  * Tests are skipped when no database is available.
  *
- * Run: DATABASE_URL="postgresql://user:pass@localhost:5432/test_db" pnpm test
+ * Run with TEST_DATABASE_URL pointing at the isolated test database.
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { createRealTable } from '../ddl.js';
+import { safeTableName } from '@marlinjai/data-table-adapter-shared';
 import { PrismaClient } from '@prisma/client';
 import { PrismaAdapter } from '../adapter.js';
 import type { Table, Column, Row } from '@marlinjai/data-table-core';
 
-const DATABASE_URL = process.env.DATABASE_URL;
+const DATABASE_URL = process.env.TEST_DATABASE_URL;
+if (DATABASE_URL) {
+  const target = new URL(DATABASE_URL);
+  if (!['localhost', '127.0.0.1', '[::1]', 'postgres'].includes(target.hostname)
+    || !target.pathname.endsWith('_test')) {
+    throw new Error('TEST_DATABASE_URL must point to a disposable local database ending in _test');
+  }
+}
 
 const describeWithDb = DATABASE_URL ? describe : describe.skip;
 
@@ -27,19 +36,15 @@ describeWithDb('PrismaAdapter', () => {
     });
     await prisma.$connect();
 
-    // Run Prisma schema push to ensure tables exist
-    const { execSync } = await import('child_process');
-    execSync('npx prisma db push --force-reset --skip-generate', {
-      cwd: new URL('../../..', import.meta.url).pathname,
-      env: { ...process.env, DATABASE_URL },
-      stdio: 'pipe',
-    });
+    // Use `pnpm test:db` for initial schema setup. Keeping schema creation
+    // outside a test hook makes cold CLI startup independent of test timeouts.
+    await prisma.dtTable.count();
 
     adapter = new PrismaAdapter({ prisma });
   });
 
   afterAll(async () => {
-    await prisma.$disconnect();
+    await prisma?.$disconnect();
   });
 
   // Clean up between tests
@@ -92,7 +97,7 @@ describeWithDb('PrismaAdapter', () => {
     it('should get a table by id', async () => {
       const created = await adapter.createTable({ workspaceId, name: 'My Table' });
       const fetched = await adapter.getTable(created.id);
-      expect(fetched.name).toBe('My Table');
+      expect(fetched?.name).toBe('My Table');
     });
 
     it('should update a table', async () => {
@@ -114,7 +119,7 @@ describeWithDb('PrismaAdapter', () => {
       await adapter.deleteTable(table.id);
 
       // Verify metadata is gone
-      await expect(adapter.getTable(table.id)).rejects.toThrow();
+      expect(await adapter.getTable(table.id)).toBeNull();
 
       // Verify real table is dropped
       const tables = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
@@ -185,6 +190,42 @@ describeWithDb('PrismaAdapter', () => {
       expect(userCols).toHaveLength(0);
     });
 
+    it('serializes competing column creates and leaves exactly one physical column', async () => {
+      const outcomes = await Promise.allSettled(Array.from({ length: 5 }, () =>
+        adapter.createColumn({ tableId, name: 'Concurrent', type: 'text' })));
+      expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+      const failures = outcomes.filter((outcome) => outcome.status === 'rejected');
+      expect(failures).toHaveLength(4);
+      for (const failure of failures) expect(failure.reason.message).toMatch(/already exists/);
+      expect(await adapter.getColumns(tableId)).toHaveLength(1);
+      const fields = await prisma.$queryRawUnsafe<Array<{ column_name: string }>>(
+        "SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND column_name LIKE 'col_%'",
+        safeTableName(tableId),
+      );
+      expect(fields).toHaveLength(1);
+    });
+
+    it('rejects competing renames but allows the same name in another table', async () => {
+      const first = await adapter.createColumn({ tableId, name: 'First', type: 'text' });
+      const second = await adapter.createColumn({ tableId, name: 'Second', type: 'text' });
+      const outcomes = await Promise.allSettled([
+        adapter.updateColumn(first.id, { name: 'Shared' }),
+        adapter.updateColumn(second.id, { name: 'Shared' }),
+      ]);
+      expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+      expect((await adapter.getColumns(tableId)).filter((column) => column.name === 'Shared')).toHaveLength(1);
+      const other = await adapter.createTable({ workspaceId, name: 'Other' });
+      await expect(adapter.createColumn({ tableId: other.id, name: 'Shared', type: 'text' })).resolves.toMatchObject({ name: 'Shared' });
+    });
+
+    it('rolls back metadata when physical creation fails, and accepts a retry', async () => {
+      await prisma.$executeRawUnsafe(`DROP TABLE ${safeTableName(tableId)}`);
+      await expect(adapter.createColumn({ tableId, name: 'Retry', type: 'text' })).rejects.toThrow();
+      expect(await adapter.getColumns(tableId)).toHaveLength(0);
+      await createRealTable(prisma, tableId, []);
+      await expect(adapter.createColumn({ tableId, name: 'Retry', type: 'text' })).resolves.toMatchObject({ name: 'Retry' });
+    });
+
     it('should list columns for a table', async () => {
       await adapter.createColumn({ tableId, name: 'A', type: 'text' });
       await adapter.createColumn({ tableId, name: 'B', type: 'number' });
@@ -196,7 +237,7 @@ describeWithDb('PrismaAdapter', () => {
 
     it('should delete a column', async () => {
       const col = await adapter.createColumn({ tableId, name: 'ToRemove', type: 'text' });
-      await adapter.deleteColumn(tableId, col.id);
+      await adapter.deleteColumn(col.id);
 
       const columns = await adapter.getColumns(tableId);
       expect(columns).toHaveLength(0);
@@ -232,8 +273,8 @@ describeWithDb('PrismaAdapter', () => {
       expect(row.cells[nameColId]).toBe('Alice');
       expect(row.cells[ageColId]).toBe('30');
 
-      const fetched = await adapter.getRow(tableId, row.id);
-      expect(fetched.cells[nameColId]).toBe('Alice');
+      const fetched = await adapter.getRow(row.id);
+      expect(fetched?.cells[nameColId]).toBe('Alice');
     });
 
     it('should update a row', async () => {
@@ -242,12 +283,10 @@ describeWithDb('PrismaAdapter', () => {
         cells: { [nameColId]: 'Bob', [ageColId]: '25' },
       });
 
-      const updated = await adapter.updateRow(tableId, row.id, {
-        cells: { [nameColId]: 'Robert' },
-      });
+      const updated = await adapter.updateRow(row.id, { [nameColId]: 'Robert' });
 
       expect(updated.cells[nameColId]).toBe('Robert');
-      expect(updated.cells[ageColId]).toBe('25'); // unchanged
+      expect(updated.cells[ageColId]).toBe(25); // unchanged
     });
 
     it('should delete a row', async () => {
@@ -256,8 +295,56 @@ describeWithDb('PrismaAdapter', () => {
         cells: { [nameColId]: 'Charlie' },
       });
 
-      await adapter.deleteRow(tableId, row.id);
-      await expect(adapter.getRow(tableId, row.id)).rejects.toThrow();
+      await adapter.deleteRow(row.id);
+      expect(await adapter.getRow(row.id)).toBeNull();
+    });
+
+    it('reads the same row across schema edits and reloads without disabling statement caching', async () => {
+      const row = await adapter.createRow({ tableId, cells: { [nameColId]: 'Original' } });
+      expect((await adapter.getRow(row.id))?.cells[nameColId]).toBe('Original');
+      expect((await adapter.getRows(tableId)).items).toHaveLength(1);
+      const added = await adapter.createColumn({ tableId, name: 'Added', type: 'text' });
+      await adapter.updateRow(row.id, { [added.id]: 'Saved' });
+      expect((await adapter.getRows(tableId)).items[0].cells[added.id]).toBe('Saved');
+      const reloadedClient = new PrismaClient({ datasources: { db: { url: DATABASE_URL } } });
+      try {
+        const reloaded = new PrismaAdapter({ prisma: reloadedClient });
+        expect((await reloaded.getRow(row.id))?.cells[added.id]).toBe('Saved');
+      } finally {
+        await reloadedClient.$disconnect();
+      }
+      await adapter.deleteColumn(added.id);
+      expect((await adapter.getRow(row.id))?.cells[nameColId]).toBe('Original');
+      expect((await adapter.getRows(tableId)).items[0].cells).not.toHaveProperty(added.id);
+      const replacement = await adapter.createColumn({ tableId, name: 'Added', type: 'text' });
+      expect((await adapter.getRow(row.id))?.cells[replacement.id]).toBeNull();
+    });
+
+    it('propagates database failures instead of reporting a missing row', async () => {
+      const row = await adapter.createRow({ tableId, cells: { [nameColId]: 'Present' } });
+      await prisma.$executeRawUnsafe(`DROP TABLE ${safeTableName(tableId)}`);
+      await expect(adapter.getRow(row.id)).rejects.toThrow();
+    });
+
+    it('rejects unknown writes before changing valid cells or selections', async () => {
+      const tags = await adapter.createColumn({ tableId, name: 'Tags', type: 'multi_select' });
+      const option = await adapter.createSelectOption({ columnId: tags.id, name: 'Kept' });
+      const row = await adapter.createRow({ tableId, cells: { [nameColId]: 'Original', [tags.id]: [option.id] } });
+      await expect(adapter.updateRow(row.id, {
+        [nameColId]: 'Changed', [tags.id]: [], unknown: 'Must fail',
+      })).rejects.toThrow(/Unknown column/);
+      const saved = await adapter.getRow(row.id);
+      expect(saved?.cells[nameColId]).toBe('Original');
+      expect(saved?.cells[tags.id]).toEqual([option.id]);
+      await expect(adapter.updateRow(row.id, { [nameColId]: 'Retry' })).resolves.toMatchObject({ cells: { [nameColId]: 'Retry' } });
+    });
+
+    it('rejects unknown and foreign column keys before creating a row', async () => {
+      const foreign = await adapter.createTable({ workspaceId, name: 'Foreign' });
+      const foreignColumn = await adapter.createColumn({ tableId: foreign.id, name: 'Foreign', type: 'text' });
+      await expect(adapter.createRow({ tableId, cells: { [nameColId]: 'Lost', [foreignColumn.id]: 'Foreign' } })).rejects.toThrow(/Unknown column/);
+      expect((await adapter.getRows(tableId)).total).toBe(0);
+      await expect(adapter.createRow({ tableId, cells: { [nameColId]: 'Retry' } })).resolves.toBeDefined();
     });
 
     it('should query rows with filters', async () => {
@@ -269,7 +356,7 @@ describeWithDb('PrismaAdapter', () => {
         filters: [{ columnId: nameColId, operator: 'contains', value: 'li' }],
       });
 
-      expect(result.rows).toHaveLength(2); // Alice and Charlie
+      expect(result.items).toHaveLength(2); // Alice and Charlie
     });
 
     it('should query rows with sorting', async () => {
@@ -278,11 +365,11 @@ describeWithDb('PrismaAdapter', () => {
       await adapter.createRow({ tableId, cells: { [nameColId]: 'Bob', [ageColId]: '25' } });
 
       const result = await adapter.getRows(tableId, {
-        sort: { columnId: nameColId, direction: 'asc' },
+        sorts: [{ columnId: nameColId, direction: 'asc' }],
       });
 
-      expect(result.rows[0].cells[nameColId]).toBe('Alice');
-      expect(result.rows[2].cells[nameColId]).toBe('Charlie');
+      expect(result.items[0].cells[nameColId]).toBe('Alice');
+      expect(result.items[2].cells[nameColId]).toBe('Charlie');
     });
 
     it('should paginate rows', async () => {
@@ -291,11 +378,11 @@ describeWithDb('PrismaAdapter', () => {
       }
 
       const page1 = await adapter.getRows(tableId, { limit: 2, offset: 0 });
-      expect(page1.rows).toHaveLength(2);
+      expect(page1.items).toHaveLength(2);
       expect(page1.total).toBe(5);
 
       const page2 = await adapter.getRows(tableId, { limit: 2, offset: 2 });
-      expect(page2.rows).toHaveLength(2);
+      expect(page2.items).toHaveLength(2);
     });
   });
 
@@ -321,13 +408,13 @@ describeWithDb('PrismaAdapter', () => {
 
     it('should update a view', async () => {
       const view = await adapter.createView({ tableId, name: 'Old', type: 'table' });
-      const updated = await adapter.updateView(tableId, view.id, { name: 'New' });
+      const updated = await adapter.updateView(view.id, { name: 'New' });
       expect(updated.name).toBe('New');
     });
 
     it('should delete a view', async () => {
       const view = await adapter.createView({ tableId, name: 'Delete Me', type: 'table' });
-      await adapter.deleteView(tableId, view.id);
+      await adapter.deleteView(view.id);
       const views = await adapter.getViews(tableId);
       expect(views).toHaveLength(0);
     });

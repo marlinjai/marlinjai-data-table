@@ -5,7 +5,7 @@
  * for rollback capability.
  */
 
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import type { Column } from '@marlinjai/data-table-core';
 import { safeTableName, safeColumnName, isScalarType } from '@marlinjai/data-table-adapter-shared';
 import { createRealTable } from './ddl.js';
@@ -26,7 +26,7 @@ interface LegacyRow {
  * If not yet migrated, creates the real table and copies data from dt_rows.
  */
 export async function ensureRealTable(
-  prisma: PrismaClient,
+  prisma: Prisma.TransactionClient,
   tableId: string,
 ): Promise<void> {
   // Check if already migrated
