@@ -19,3 +19,10 @@ export {
   type UseDragAndDropOptions,
   type UseDragAndDropResult,
 } from './useDragAndDrop';
+export {
+  buildRowTree,
+  flattenRowTree,
+  descendantsOf,
+  type RowTree,
+  type FlatRow,
+} from './rowTree';

@@ -6,13 +6,9 @@ import { TableFooter } from './TableFooter';
 import { ColumnHeaderMenu } from './ColumnHeaderMenu';
 import { useGrouping, canMoveBetweenGroups, valueForGroupMove } from '../hooks/useGrouping';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
+import { buildRowTree, flattenRowTree, descendantsOf } from '../hooks/rowTree';
 
-// Tree node for hierarchical row rendering
-interface RowTreeNode {
-  row: Row;
-  depth: number;
-  children: RowTreeNode[];
-}
+const NO_CHILDREN = new Map<string, Row[]>();
 
 export interface TableViewProps {
   columns: Column[];
@@ -73,6 +69,20 @@ export interface TableViewProps {
   onExpandRow?: (rowId: string) => void;
   onCollapseRow?: (rowId: string) => void;
   onCreateSubItem?: (parentRowId: string) => void;
+  /**
+   * A value a parent row shows in a column in place of its own cell, computed
+   * from its direct children (a sum of their amounts, for example). Asked for
+   * every row while sub-items are enabled, with an empty list for a row without
+   * children; return `undefined` to show the row's own cell. The value is only
+   * drawn, read-only: it is never written and never part of `rows`.
+   */
+  getSubItemSummary?: (row: Row, children: Row[], column: Column) => CellValue | undefined;
+  /**
+   * Whether a row counts in the number a group header shows and in the footer
+   * calculations. Defaults to every row. Lets a row that only holds others stay
+   * out of the counts.
+   */
+  isCountedRow?: (row: Row) => boolean;
 
   // Grouping
   groupConfig?: GroupConfig;
@@ -155,6 +165,8 @@ export function TableView({
   onExpandRow,
   onCollapseRow,
   onCreateSubItem,
+  getSubItemSummary,
+  isCountedRow,
   groupConfig,
   onGroupConfigChange,
   onToggleGroupCollapse,
@@ -192,12 +204,14 @@ export function TableView({
     () => new Set(subItemsConfig?.collapsedParents ?? [])
   );
 
-  // Sync localCollapsedParents with subItemsConfig.collapsedParents when it changes
+  // Sync localCollapsedParents with subItemsConfig.collapsedParents when its content changes.
+  // Compared by content: a consumer that builds the list on every render must not reset the state each time.
+  const collapsedParentsKey = subItemsConfig?.collapsedParents?.join('\u0000');
   useEffect(() => {
     if (subItemsConfig?.collapsedParents) {
       setLocalCollapsedParents(new Set(subItemsConfig.collapsedParents));
     }
-  }, [subItemsConfig?.collapsedParents]);
+  }, [collapsedParentsKey]);
 
   const [columnWidths, setColumnWidths] = useState<Map<string, number>>(() => {
     const map = new Map<string, number>();
@@ -226,7 +240,7 @@ export function TableView({
   const resizeCurrentWidth = useRef(0);
   // Dragging rows between groups: the row whose grip is held, the rows on the move, the group under them.
   const [armedRowId, setArmedRowId] = useState<string | null>(null);
-  const [rowDrag, setRowDrag] = useState<{ rowIds: string[]; sourceKey: string } | null>(null);
+  const [rowDrag, setRowDrag] = useState<{ rowIds: string[]; followIds: string[]; sourceKey: string } | null>(null);
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null);
 
   // Sort columns based on columnOrder prop if provided
@@ -255,68 +269,18 @@ export function TableView({
     return ordered;
   }, [columns, columnOrder]);
 
-  // Build tree structure for hierarchical rows
-  const { rowTree, rowChildrenMap, flattenedRows } = useMemo(() => {
-    // If sub-items are not enabled, return flat structure
-    if (!subItemsConfig?.enabled) {
-      return {
-        rowTree: rows.map((row) => ({ row, depth: 0, children: [] })),
-        rowChildrenMap: new Map<string, Row[]>(),
-        flattenedRows: rows.map((row) => ({ row, depth: 0, hasChildren: false })),
-      };
-    }
+  // Rows arranged by parent. Without sub-items every row is a top-level row.
+  const subItemsEnabled = !!subItemsConfig?.enabled;
+  const { topLevelRows, rowChildrenMap } = useMemo(() => {
+    if (!subItemsEnabled) return { topLevelRows: rows, rowChildrenMap: NO_CHILDREN };
+    const tree = buildRowTree(rows);
+    return { topLevelRows: tree.roots, rowChildrenMap: tree.childrenOf };
+  }, [rows, subItemsEnabled]);
 
-    // Build parent-children map
-    const childrenMap = new Map<string, Row[]>();
-    const topLevelRows: Row[] = [];
-
-    for (const row of rows) {
-      if (row.parentRowId) {
-        const siblings = childrenMap.get(row.parentRowId) ?? [];
-        siblings.push(row);
-        childrenMap.set(row.parentRowId, siblings);
-      } else {
-        topLevelRows.push(row);
-      }
-    }
-
-    // Build tree recursively
-    const buildNode = (row: Row, depth: number): RowTreeNode => {
-      const children = childrenMap.get(row.id) ?? [];
-      return {
-        row,
-        depth,
-        children: children.map((child) => buildNode(child, depth + 1)),
-      };
-    };
-
-    const tree = topLevelRows.map((row) => buildNode(row, 0));
-
-    // Flatten tree for rendering, respecting collapsed state
-    const flattened: Array<{ row: Row; depth: number; hasChildren: boolean }> = [];
-
-    const flattenNode = (node: RowTreeNode) => {
-      const hasChildren = node.children.length > 0;
-      flattened.push({ row: node.row, depth: node.depth, hasChildren });
-
-      const isCollapsed = localCollapsedParents.has(node.row.id);
-      if (!isCollapsed && hasChildren) {
-        for (const child of node.children) {
-          flattenNode(child);
-        }
-      }
-    };
-
-    for (const node of tree) {
-      flattenNode(node);
-    }
-
-    return {
-      rowTree: tree,
-      rowChildrenMap: childrenMap,
-      flattenedRows: flattened,
-    };
-  }, [rows, subItemsConfig?.enabled, localCollapsedParents]);
+  const flattenedRows = useMemo(
+    () => flattenRowTree(topLevelRows, rowChildrenMap, localCollapsedParents),
+    [topLevelRows, rowChildrenMap, localCollapsedParents]
+  );
 
   // Toggle expand/collapse for a row
   const handleToggleExpand = useCallback(
@@ -354,8 +318,10 @@ export function TableView({
   });
 
   // Grouping hook
+  // Only top-level rows are sorted into groups: a child is drawn under its
+  // parent, in the group the parent belongs to, so no row sits in a group twice.
   const { groups, isGrouped } = useGrouping({
-    rows,
+    rows: topLevelRows,
     columns: orderedColumns,
     groupConfig,
     selectOptions,
@@ -406,11 +372,15 @@ export function TableView({
       e.preventDefault();
       return;
     }
-    // Dragging one of several selected rows takes the whole selection along.
-    const rowIds = selectedRows.has(rowId) ? rows.filter((r) => selectedRows.has(r.id)).map((r) => r.id) : [rowId];
+    // Dragging one of several selected rows takes the whole selection along. Only
+    // top-level rows are written: a child follows its parent into the new group.
+    const rowIds = selectedRows.has(rowId)
+      ? topLevelRows.filter((r) => selectedRows.has(r.id)).map((r) => r.id)
+      : [rowId];
+    const followIds = rowIds.flatMap((id) => descendantsOf(id, rowChildrenMap).map((r) => r.id));
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', rowId);
-    setRowDrag({ rowIds, sourceKey });
+    setRowDrag({ rowIds, followIds, sourceKey });
   };
 
   const handleGroupDragOver = (e: React.DragEvent, groupKey: string) => {
@@ -600,19 +570,32 @@ export function TableView({
     }
   }, [newPropertyName, newPropertyType, onAddProperty]);
 
+  // Each group's rows laid out with their children, and the number its header shows.
+  const groupLayouts = useMemo(
+    () =>
+      groups.map((group) => ({
+        group,
+        flatRows: flattenRowTree(group.rows, rowChildrenMap, localCollapsedParents),
+        rowCount: flattenRowTree(group.rows, rowChildrenMap).filter((f) => !isCountedRow || isCountedRow(f.row)).length,
+      })),
+    [groups, rowChildrenMap, localCollapsedParents, isCountedRow]
+  );
+
+  const footerRows = useMemo(() => (isCountedRow ? rows.filter(isCountedRow) : rows), [rows, isCountedRow]);
+
   // Compute the visible data rows (flat list for keyboard nav)
   const visibleDataRows = useMemo(() => {
     if (isGrouped) {
       const result: Row[] = [];
-      for (const group of groups) {
-        if (!group.isCollapsed) {
-          result.push(...group.rows);
+      for (const layout of groupLayouts) {
+        if (!layout.group.isCollapsed) {
+          result.push(...layout.flatRows.map((f) => f.row));
         }
       }
       return result;
     }
     return flattenedRows.map((f) => f.row);
-  }, [isGrouped, groups, flattenedRows]);
+  }, [isGrouped, groupLayouts, flattenedRows]);
 
   // Keyboard navigation handler
   const handleKeyboardNav = useCallback(
@@ -947,6 +930,7 @@ export function TableView({
   const renderDataRow = (row: Row, depth: number, hasChildren: boolean, rowIndex?: number, groupKey?: string) => {
     const isExpanded = !localCollapsedParents.has(row.id);
     const indentPx = depth * 24; // 24px per nesting level
+    const rowChildren = rowChildrenMap.get(row.id) ?? [];
     // The keyboard-focused row gets a subtle highlight (checkbox selection wins).
     const isRowActive =
       enableKeyboardNav && activeCell !== null && rowIndex !== undefined && activeCell.rowIndex === rowIndex;
@@ -956,8 +940,9 @@ export function TableView({
         key={row.id}
         data-row-id={row.id}
         data-row-active={isRowActive || undefined}
-        className={rowDrag?.rowIds.includes(row.id) ? 'dt-row-dragging' : undefined}
-        draggable={(canDragRows && armedRowId === row.id) || undefined}
+        data-row-depth={subItemsEnabled ? depth : undefined}
+        className={rowDrag?.rowIds.includes(row.id) || rowDrag?.followIds.includes(row.id) ? 'dt-row-dragging' : undefined}
+        draggable={(canDragRows && groupKey !== undefined && armedRowId === row.id) || undefined}
         onDragStart={canDragRows && groupKey !== undefined ? (e) => handleRowDragStart(e, row.id, groupKey) : undefined}
         onDragEnd={canDragRows ? endRowDrag : undefined}
         style={{
@@ -993,6 +978,7 @@ export function TableView({
           const cellBorderStyles = getCellBorderStyles(isLastColumn);
           const alignment = column.alignment ?? getDefaultAlignment(column.type);
           const isCellActive = enableKeyboardNav && activeCell !== null && rowIndex !== undefined && activeCell.rowIndex === rowIndex && activeCell.colIndex === colIndex;
+          const summary = subItemsEnabled ? getSubItemSummary?.(row, rowChildren, column) : undefined;
 
           return (
             <td
@@ -1016,11 +1002,11 @@ export function TableView({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  paddingLeft: isFirstColumn && subItemsConfig?.enabled ? indentPx : 0,
+                  paddingLeft: isFirstColumn && subItemsEnabled ? indentPx : 0,
                 }}
               >
                 {/* Expand/collapse toggle for first column when sub-items enabled */}
-                {isFirstColumn && subItemsConfig?.enabled && (
+                {isFirstColumn && subItemsEnabled && (
                   <div
                     style={{
                       display: 'flex',
@@ -1057,12 +1043,14 @@ export function TableView({
                           (e.currentTarget.style.backgroundColor = 'transparent')
                         }
                         title={isExpanded ? 'Collapse' : 'Expand'}
+                        aria-label={isExpanded ? 'Collapse sub-items' : 'Expand sub-items'}
+                        aria-expanded={isExpanded}
                       >
                         <span
                           style={{
                             transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
                             display: 'inline-block',
-                            transition: 'transform 0.15s',
+                            transition: 'transform 0.15s ease-out',
                           }}
                         >
                           &#9654;
@@ -1105,10 +1093,10 @@ export function TableView({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <CellRenderer
                     column={column}
-                    value={row.cells[column.id]}
+                    value={summary !== undefined ? summary : row.cells[column.id]}
                     onChange={(value) => handleCellChange(row.id, column.id, value)}
                     selectOptions={selectOptions.get(column.id)}
-                    readOnly={readOnly}
+                    readOnly={readOnly || summary !== undefined}
                     alignment={alignment}
                     onCreateOption={
                       onCreateSelectOption
@@ -1395,7 +1383,7 @@ export function TableView({
             let runningIndex = 0;
             return (
               <>
-                {groups.map((group) => (
+                {groupLayouts.map(({ group, flatRows, rowCount }) => (
                   <div
                     key={group.value}
                     className={`dt-group-section${dragOverGroup === group.value ? ' dt-group-drop-target' : ''}`}
@@ -1407,7 +1395,7 @@ export function TableView({
                   >
                     <GroupHeader
                       label={group.label}
-                      rowCount={group.rows.length}
+                      rowCount={rowCount}
                       isCollapsed={group.isCollapsed}
                       onToggleCollapse={() => handleToggleGroupCollapse(group.value)}
                       colSpan={totalColumns}
@@ -1437,9 +1425,10 @@ export function TableView({
                           </tr>
                         </thead>
                         <tbody>
-                          {group.rows.map((row) => {
+                          {flatRows.map(({ row, depth, hasChildren }) => {
                             const idx = runningIndex++;
-                            return renderDataRow(row, 0, false, idx, group.value);
+                            // Only a top-level row can be dragged into another group; its children follow it.
+                            return renderDataRow(row, depth, hasChildren, idx, depth === 0 ? group.value : undefined);
                           })}
                         </tbody>
                       </table>
@@ -1655,7 +1644,7 @@ export function TableView({
           {showFooter && !isGrouped && (
             <TableFooter
               columns={orderedColumns}
-              rows={rows}
+              rows={footerRows}
               footerConfig={footerConfig}
               onFooterConfigChange={onFooterConfigChange}
               columnWidths={columnWidths}
