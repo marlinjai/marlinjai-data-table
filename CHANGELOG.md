@@ -19,6 +19,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`@marlinjai/data-table-adapter-data-brain`** — Use `adapter-d1` or `adapter-prisma` directly. Data Brain service is being archived; all consumers have been migrated to direct adapter usage.
 
+## [react-0.5.0] - 2026-10-10
+
+### Added
+
+- **`@marlinjai/data-table-react`** grouped tables: a row can be dragged from one group into another by a grip that appears on the row. The drop writes the grouped column through `onCellChange`, exactly as editing the cell would (select, multi-select, text, url, number and checkbox columns; a multi-select row swaps the option of the group it left). Dragging one of several selected rows takes the selection along. No grip when the table is read-only, has no `onCellChange`, or groups by a date or a computed column
+- **`@marlinjai/data-table-react`** the column resize handle is wider (9px, drawn as a 3px line on hover), keeps the resize cursor while dragging, and answers the arrow keys when focused (10px a step, 40px with Shift)
+- **`@marlinjai/data-table-react`** exports `valueForGroupMove`, `canMoveBetweenGroups` and `EMPTY_GROUP_KEY`
+- The React package has tests now (`pnpm --filter @marlinjai/data-table-react test`, vitest with jsdom)
+
+### Fixed
+
+- **`@marlinjai/data-table-react`** grouped tables had a reduced header: no column resize handle, no sorting, no alignment menu, no reordering. Every group's table now renders the same header cell as the plain table, and has the missing header cell above the "add property" column
+- **`@marlinjai/data-table-react`** `onColumnResize` reported the width the column had when the drag started instead of the width on release, so a resized column fell back to its old width on the next load. A click on the handle without movement no longer reports anything
+
 ## [react-0.4.1] - 2026-07-24
 
 ### Fixed

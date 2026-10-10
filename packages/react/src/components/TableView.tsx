@@ -4,7 +4,7 @@ import { CellRenderer } from './cells/CellRenderer';
 import { GroupHeader } from './GroupHeader';
 import { TableFooter } from './TableFooter';
 import { ColumnHeaderMenu } from './ColumnHeaderMenu';
-import { useGrouping } from '../hooks/useGrouping';
+import { useGrouping, canMoveBetweenGroups, valueForGroupMove } from '../hooks/useGrouping';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
 
 // Tree node for hierarchical row rendering
@@ -104,6 +104,9 @@ export interface TableViewProps {
   className?: string;
   style?: React.CSSProperties;
 }
+
+/** A column is never dragged narrower than this. */
+const MIN_COLUMN_WIDTH = 80;
 
 const COLUMN_TYPES: { value: ColumnType; label: string; icon: string }[] = [
   { value: 'text', label: 'Text', icon: 'Aa' },
@@ -219,6 +222,12 @@ export function TableView({
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
+  // The width under the pointer right now. State would be one render behind when the mouse is released.
+  const resizeCurrentWidth = useRef(0);
+  // Dragging rows between groups: the row whose grip is held, the rows on the move, the group under them.
+  const [armedRowId, setArmedRowId] = useState<string | null>(null);
+  const [rowDrag, setRowDrag] = useState<{ rowIds: string[]; sourceKey: string } | null>(null);
+  const [dragOverGroup, setDragOverGroup] = useState<string | null>(null);
 
   // Sort columns based on columnOrder prop if provided
   const orderedColumns = useMemo(() => {
@@ -373,6 +382,85 @@ export function TableView({
     [onToggleGroupCollapse, onGroupConfigChange, groupConfig]
   );
 
+  // Rows can be dragged from one group into another when the grouped column can be
+  // written from a group's key. The drop writes that column, the same as editing the cell.
+  const groupColumn = isGrouped ? orderedColumns.find((c) => c.id === groupConfig?.columnId) : undefined;
+  const canDragRows = !!groupColumn && !readOnly && !!onCellChange && canMoveBetweenGroups(groupColumn.type);
+
+  // The row is draggable only while its grip is held, so text in cells stays selectable.
+  useEffect(() => {
+    if (!armedRowId) return;
+    const disarm = () => setArmedRowId(null);
+    document.addEventListener('mouseup', disarm);
+    return () => document.removeEventListener('mouseup', disarm);
+  }, [armedRowId]);
+
+  const endRowDrag = useCallback(() => {
+    setArmedRowId(null);
+    setRowDrag(null);
+    setDragOverGroup(null);
+  }, []);
+
+  const handleRowDragStart = (e: React.DragEvent, rowId: string, sourceKey: string) => {
+    if (!canDragRows || armedRowId !== rowId) {
+      e.preventDefault();
+      return;
+    }
+    // Dragging one of several selected rows takes the whole selection along.
+    const rowIds = selectedRows.has(rowId) ? rows.filter((r) => selectedRows.has(r.id)).map((r) => r.id) : [rowId];
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', rowId);
+    setRowDrag({ rowIds, sourceKey });
+  };
+
+  const handleGroupDragOver = (e: React.DragEvent, groupKey: string) => {
+    if (!rowDrag || groupKey === rowDrag.sourceKey) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverGroup !== groupKey) setDragOverGroup(groupKey);
+  };
+
+  const handleGroupDragLeave = (e: React.DragEvent, groupKey: string) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    setDragOverGroup((current) => (current === groupKey ? null : current));
+  };
+
+  const handleGroupDrop = (e: React.DragEvent, groupKey: string) => {
+    if (!rowDrag || !groupColumn || groupKey === rowDrag.sourceKey) return;
+    e.preventDefault();
+    for (const rowId of rowDrag.rowIds) {
+      const row = rows.find((r) => r.id === rowId);
+      if (!row) continue;
+      const move = valueForGroupMove(groupColumn.type, row.cells[groupColumn.id], rowDrag.sourceKey, groupKey);
+      if (move) onCellChange?.(rowId, groupColumn.id, move.value);
+    }
+    endRowDrag();
+  };
+
+  const renderRowGrip = (rowId: string, groupKey: string | undefined) =>
+    canDragRows && groupKey !== undefined ? (
+      <span
+        className="dt-row-grip"
+        role="button"
+        aria-label="Drag to another group"
+        title="Drag to another group"
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          setArmedRowId(rowId);
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor" style={{ display: 'block' }} aria-hidden="true">
+          <circle cx="2" cy="2" r="1.2" />
+          <circle cx="6" cy="2" r="1.2" />
+          <circle cx="2" cy="7" r="1.2" />
+          <circle cx="6" cy="7" r="1.2" />
+          <circle cx="2" cy="12" r="1.2" />
+          <circle cx="6" cy="12" r="1.2" />
+        </svg>
+      </span>
+    ) : null;
+
   // Update widths when columns change
   useEffect(() => {
     setColumnWidths((prev) => {
@@ -397,8 +485,23 @@ export function TableView({
       setResizingColumn(columnId);
       resizeStartX.current = e.clientX;
       resizeStartWidth.current = getColumnWidth(columnId);
+      resizeCurrentWidth.current = resizeStartWidth.current;
     },
     [columnWidths]
+  );
+
+  // Arrow keys on a focused resize handle: 10px a step, 40px with Shift.
+  const handleResizeKey = useCallback(
+    (e: React.KeyboardEvent, columnId: string) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      e.stopPropagation();
+      const step = (e.shiftKey ? 40 : 10) * (e.key === 'ArrowLeft' ? -1 : 1);
+      const next = Math.max(MIN_COLUMN_WIDTH, getColumnWidth(columnId) + step);
+      setColumnWidths((prev) => new Map(prev).set(columnId, next));
+      onColumnResize?.(columnId, next);
+    },
+    [columnWidths, onColumnResize]
   );
 
   useEffect(() => {
@@ -406,21 +509,26 @@ export function TableView({
 
     const handleMouseMove = (e: MouseEvent) => {
       const diff = e.clientX - resizeStartX.current;
-      const newWidth = Math.max(80, resizeStartWidth.current + diff);
+      const newWidth = Math.max(MIN_COLUMN_WIDTH, resizeStartWidth.current + diff);
+      resizeCurrentWidth.current = newWidth;
       setColumnWidths((prev) => new Map(prev).set(resizingColumn, newWidth));
     };
 
     const handleMouseUp = () => {
-      if (resizingColumn && onColumnResize) {
-        onColumnResize(resizingColumn, getColumnWidth(resizingColumn));
+      if (resizingColumn && onColumnResize && resizeCurrentWidth.current !== resizeStartWidth.current) {
+        onColumnResize(resizingColumn, resizeCurrentWidth.current);
       }
       setResizingColumn(null);
     };
 
+    // The pointer leaves the thin handle at once, so the cursor is held on the page while resizing.
+    const previousCursor = document.body.style.cursor;
+    document.body.style.cursor = 'col-resize';
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
 
     return () => {
+      document.body.style.cursor = previousCursor;
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -722,7 +830,121 @@ export function TableView({
   const totalColumns = columns.length + (onSelectionChange ? 1 : 0) + (onDeleteRow ? 1 : 0) + (onAddProperty ? 1 : 0);
 
   // Helper function to render a single data row
-  const renderDataRow = (row: Row, depth: number, hasChildren: boolean, rowIndex?: number) => {
+  // One header cell with sorting, the alignment menu, reordering and the resize handle.
+  // Used by the plain table and by every group's table, so grouping loses none of them.
+  const renderHeaderCell = (column: Column, colIndex: number) => {
+    const sortDir = getSortDirection(column.id);
+    const width = getColumnWidth(column.id);
+    const isDraggingThis = isItemDragging(column.id);
+    const isDropTargetThis = isDropTarget(column.id);
+    const dropPosition = getDropPosition(column.id);
+    const dragProps = getDragProps(column.id);
+    const canDrag = !!onColumnReorder && !resizingColumn;
+    const isLastColumn = colIndex === orderedColumns.length - 1;
+    const cellBorderStyles = getCellBorderStyles(isLastColumn);
+    const alignment = column.alignment ?? getDefaultAlignment(column.type);
+
+    // Build className for drag states
+    const headerClasses = [
+      'dt-column-header',
+      isDraggingThis ? 'dt-dragging' : '',
+      isDropTargetThis && dropPosition === 'before' ? 'dt-drag-over-before' : '',
+      isDropTargetThis && dropPosition === 'after' ? 'dt-drag-over-after' : '',
+    ].filter(Boolean).join(' ');
+
+    return (
+      <th
+        key={column.id}
+        className={headerClasses}
+        style={{
+          width,
+          minWidth: width,
+          maxWidth: width,
+          padding: '10px 12px',
+          ...cellBorderStyles,
+          textAlign: alignment,
+          fontWeight: 500,
+          color: 'var(--dt-text-primary)',
+          cursor: isDragging ? 'grabbing' : (onSortChange ? 'pointer' : 'default'),
+          userSelect: 'none',
+          position: 'relative',
+        }}
+        onClick={() => !isDragging && handleSort(column.id)}
+        onContextMenu={(e) => {
+          if (onColumnAlignmentChange) {
+            e.preventDefault();
+            setHeaderMenu({
+              columnId: column.id,
+              position: { x: e.clientX, y: e.clientY },
+            });
+          }
+        }}
+        onMouseEnter={() => setHoveredColumnId(column.id)}
+        onMouseLeave={() => setHoveredColumnId(null)}
+        {...(canDrag ? {
+          draggable: dragProps.draggable,
+          onDragStart: dragProps.onDragStart,
+          onDragOver: dragProps.onDragOver,
+          onDragEnd: dragProps.onDragEnd,
+          onDrop: dragProps.onDrop,
+          onDragLeave: dragProps.onDragLeave,
+        } : {})}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {/* Drag handle */}
+          {canDrag && (
+            <span
+              className="dt-drag-handle"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              title="Drag to reorder"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="currentColor"
+                style={{ display: 'block' }}
+              >
+                <circle cx="3" cy="2" r="1" />
+                <circle cx="7" cy="2" r="1" />
+                <circle cx="3" cy="6" r="1" />
+                <circle cx="7" cy="6" r="1" />
+                <circle cx="3" cy="10" r="1" />
+                <circle cx="7" cy="10" r="1" />
+              </svg>
+            </span>
+          )}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+            {column.name}
+          </span>
+          {sortDir && (
+            <span style={{ color: 'var(--dt-accent-primary)', fontSize: '12px', flexShrink: 0 }}>
+              {sortDir === 'asc' ? '↑' : '↓'}
+            </span>
+          )}
+        </div>
+        {/* Resize handle: a 9px strip on the column's right edge, drawn as a 3px line */}
+        <div
+          className={`dt-resize-handle${resizingColumn === column.id ? ' dt-resizing' : ''}`}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={`Resize column ${column.name}`}
+          aria-valuenow={Math.round(width)}
+          aria-valuemin={MIN_COLUMN_WIDTH}
+          // Focusable by click, not a tab stop: a grouped table repeats the header in every group.
+          tabIndex={-1}
+          draggable={false}
+          onMouseDown={(e) => handleResizeStart(e, column.id)}
+          onKeyDown={(e) => handleResizeKey(e, column.id)}
+          onClick={(e) => e.stopPropagation()}
+          onDragStart={(e) => e.preventDefault()}
+        />
+      </th>
+    );
+  };
+
+  const renderDataRow = (row: Row, depth: number, hasChildren: boolean, rowIndex?: number, groupKey?: string) => {
     const isExpanded = !localCollapsedParents.has(row.id);
     const indentPx = depth * 24; // 24px per nesting level
     // The keyboard-focused row gets a subtle highlight (checkbox selection wins).
@@ -734,6 +956,10 @@ export function TableView({
         key={row.id}
         data-row-id={row.id}
         data-row-active={isRowActive || undefined}
+        className={rowDrag?.rowIds.includes(row.id) ? 'dt-row-dragging' : undefined}
+        draggable={(canDragRows && armedRowId === row.id) || undefined}
+        onDragStart={canDragRows && groupKey !== undefined ? (e) => handleRowDragStart(e, row.id, groupKey) : undefined}
+        onDragEnd={canDragRows ? endRowDrag : undefined}
         style={{
           backgroundColor: selectedRows.has(row.id)
             ? 'var(--dt-bg-selected)'
@@ -748,8 +974,10 @@ export function TableView({
               padding: '4px 8px',
               ...getCellBorderStyles(false),
               textAlign: 'center',
+              position: 'relative',
             }}
           >
+            {renderRowGrip(row.id, groupKey)}
             <input
               type="checkbox"
               checked={selectedRows.has(row.id)}
@@ -783,6 +1011,7 @@ export function TableView({
                 position: 'relative',
               }}
             >
+              {isFirstColumn && !onSelectionChange && renderRowGrip(row.id, groupKey)}
               <div
                 style={{
                   display: 'flex',
@@ -1039,6 +1268,77 @@ export function TableView({
           background-color: var(--dt-accent-primary);
           z-index: 10;
         }
+        .dt-resize-handle {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          right: 0;
+          width: 9px;
+          cursor: col-resize;
+          z-index: 2;
+          touch-action: none;
+        }
+        .dt-resize-handle::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          right: 0;
+          width: 3px;
+          background-color: transparent;
+          transition: background-color 0.12s ease-out;
+        }
+        .dt-resize-handle:hover::after,
+        .dt-resize-handle:focus-visible::after {
+          background-color: var(--dt-border-color-strong);
+        }
+        .dt-resize-handle.dt-resizing::after {
+          background-color: var(--dt-accent-primary);
+        }
+        .dt-resize-handle:focus-visible {
+          outline: none;
+        }
+        .dt-row-grip {
+          position: absolute;
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 14px;
+          height: 22px;
+          border-radius: 3px;
+          color: var(--dt-text-muted);
+          cursor: grab;
+          opacity: 0;
+          transition: opacity 0.12s ease-out;
+          z-index: 1;
+        }
+        tr:hover .dt-row-grip,
+        tr.dt-row-dragging .dt-row-grip {
+          opacity: 1;
+        }
+        .dt-row-grip:hover {
+          background-color: var(--dt-border-color);
+          color: var(--dt-text-secondary);
+        }
+        .dt-row-grip:active {
+          cursor: grabbing;
+        }
+        tr.dt-row-dragging {
+          opacity: 0.45;
+        }
+        .dt-group-section {
+          border-radius: var(--dt-border-radius-sm, 6px);
+          outline: 2px solid transparent;
+          outline-offset: 3px;
+          transition: outline-color 0.12s ease-out, background-color 0.12s ease-out;
+        }
+        .dt-group-section.dt-group-drop-target {
+          outline-color: var(--dt-accent-primary);
+          background-color: var(--dt-bg-hover);
+        }
         .dt-drag-handle {
           opacity: 0;
           cursor: grab;
@@ -1096,7 +1396,15 @@ export function TableView({
             return (
               <>
                 {groups.map((group) => (
-                  <div key={group.value} className="dt-group-section" style={{ marginBottom: '20px' }}>
+                  <div
+                    key={group.value}
+                    className={`dt-group-section${dragOverGroup === group.value ? ' dt-group-drop-target' : ''}`}
+                    data-group-key={group.value}
+                    style={{ marginBottom: '20px' }}
+                    onDragOver={canDragRows ? (e) => handleGroupDragOver(e, group.value) : undefined}
+                    onDragLeave={canDragRows ? (e) => handleGroupDragLeave(e, group.value) : undefined}
+                    onDrop={canDragRows ? (e) => handleGroupDrop(e, group.value) : undefined}
+                  >
                     <GroupHeader
                       label={group.label}
                       rowCount={group.rows.length}
@@ -1123,23 +1431,15 @@ export function TableView({
                                 <input type="checkbox" checked={false} onChange={handleSelectAll} style={{ cursor: 'pointer' }} />
                               </th>
                             )}
-                            {orderedColumns.map((column, colIndex) => {
-                              const width = getColumnWidth(column.id);
-                              const isLastColumn = colIndex === orderedColumns.length - 1;
-                              const alignment = column.alignment ?? getDefaultAlignment(column.type);
-                              return (
-                                <th key={column.id} style={{ width: `${width}px`, minWidth: `${width}px`, padding: '8px 12px', ...getCellBorderStyles(isLastColumn), textAlign: alignment, fontWeight: 500, color: 'var(--dt-text-secondary)', fontSize: 'var(--dt-font-size-sm, 12px)' }}>
-                                  {column.name}
-                                </th>
-                              );
-                            })}
+                            {orderedColumns.map(renderHeaderCell)}
+                            {onAddProperty && <th style={{ width: '140px', minWidth: '140px', ...getCellBorderStyles(false) }} />}
                             {onDeleteRow && <th style={{ width: '50px', minWidth: '50px', padding: '10px 8px', ...getCellBorderStyles(true) }} />}
                           </tr>
                         </thead>
                         <tbody>
                           {group.rows.map((row) => {
                             const idx = runningIndex++;
-                            return renderDataRow(row, 0, false, idx);
+                            return renderDataRow(row, 0, false, idx, group.value);
                           })}
                         </tbody>
                       </table>
@@ -1193,121 +1493,7 @@ export function TableView({
                   />
                 </th>
               )}
-              {orderedColumns.map((column, colIndex) => {
-                const sortDir = getSortDirection(column.id);
-                const width = getColumnWidth(column.id);
-                const isDraggingThis = isItemDragging(column.id);
-                const isDropTargetThis = isDropTarget(column.id);
-                const dropPosition = getDropPosition(column.id);
-                const dragProps = getDragProps(column.id);
-                const canDrag = !!onColumnReorder && !resizingColumn;
-                const isLastColumn = colIndex === orderedColumns.length - 1;
-                const cellBorderStyles = getCellBorderStyles(isLastColumn);
-                const alignment = column.alignment ?? getDefaultAlignment(column.type);
-
-                // Build className for drag states
-                const headerClasses = [
-                  'dt-column-header',
-                  isDraggingThis ? 'dt-dragging' : '',
-                  isDropTargetThis && dropPosition === 'before' ? 'dt-drag-over-before' : '',
-                  isDropTargetThis && dropPosition === 'after' ? 'dt-drag-over-after' : '',
-                ].filter(Boolean).join(' ');
-
-                return (
-                  <th
-                    key={column.id}
-                    className={headerClasses}
-                    style={{
-                      width,
-                      minWidth: width,
-                      maxWidth: width,
-                      padding: '10px 12px',
-                      ...cellBorderStyles,
-                      textAlign: alignment,
-                      fontWeight: 500,
-                      color: 'var(--dt-text-primary)',
-                      cursor: isDragging ? 'grabbing' : (onSortChange ? 'pointer' : 'default'),
-                      userSelect: 'none',
-                      position: 'relative',
-                    }}
-                    onClick={() => !isDragging && handleSort(column.id)}
-                    onContextMenu={(e) => {
-                      if (onColumnAlignmentChange) {
-                        e.preventDefault();
-                        setHeaderMenu({
-                          columnId: column.id,
-                          position: { x: e.clientX, y: e.clientY },
-                        });
-                      }
-                    }}
-                    onMouseEnter={() => setHoveredColumnId(column.id)}
-                    onMouseLeave={() => setHoveredColumnId(null)}
-                    {...(canDrag ? {
-                      draggable: dragProps.draggable,
-                      onDragStart: dragProps.onDragStart,
-                      onDragOver: dragProps.onDragOver,
-                      onDragEnd: dragProps.onDragEnd,
-                      onDrop: dragProps.onDrop,
-                      onDragLeave: dragProps.onDragLeave,
-                    } : {})}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      {/* Drag handle */}
-                      {canDrag && (
-                        <span
-                          className="dt-drag-handle"
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => e.stopPropagation()}
-                          title="Drag to reorder"
-                        >
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 12 12"
-                            fill="currentColor"
-                            style={{ display: 'block' }}
-                          >
-                            <circle cx="3" cy="2" r="1" />
-                            <circle cx="7" cy="2" r="1" />
-                            <circle cx="3" cy="6" r="1" />
-                            <circle cx="7" cy="6" r="1" />
-                            <circle cx="3" cy="10" r="1" />
-                            <circle cx="7" cy="10" r="1" />
-                          </svg>
-                        </span>
-                      )}
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                        {column.name}
-                      </span>
-                      {sortDir && (
-                        <span style={{ color: 'var(--dt-accent-primary)', fontSize: '12px', flexShrink: 0 }}>
-                          {sortDir === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </div>
-                    {/* Resize handle */}
-                    <div
-                      onMouseDown={(e) => handleResizeStart(e, column.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        position: 'absolute',
-                        right: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: '6px',
-                        cursor: 'col-resize',
-                        backgroundColor: resizingColumn === column.id ? 'var(--dt-accent-primary)' : 'transparent',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!resizingColumn) e.currentTarget.style.backgroundColor = 'var(--dt-border-color-strong)';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!resizingColumn) e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
-                    />
-                  </th>
-                );
-              })}
+              {orderedColumns.map(renderHeaderCell)}
               {/* Add Property column */}
               {onAddProperty && (
                 <th
