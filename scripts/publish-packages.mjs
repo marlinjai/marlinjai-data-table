@@ -76,6 +76,9 @@ function packedManifest(tarball) {
 }
 
 let publishedCount = 0;
+// A package npm refuses must not hold back the ones after it: each is tried, and the
+// run fails at the end if any was refused.
+const failed = [];
 for (const dir of PACKAGES) {
   const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
   if (pkg.private) {
@@ -121,10 +124,22 @@ for (const dir of PACKAGES) {
 
   // npm publish (not pnpm) performs the Trusted Publishing OIDC exchange.
   const flags = PROVENANCE ? [] : ['--provenance=false'];
-  passthrough('npm', ['publish', tarball, '--access', 'public', ...flags]);
-  rmSync(out, { recursive: true, force: true });
-  publishedCount += 1;
+  try {
+    passthrough('npm', ['publish', tarball, '--access', 'public', ...flags]);
+    publishedCount += 1;
+  } catch {
+    // npm has already printed why. A 404 here usually means the package's trusted
+    // publisher entry on npm does not name this workflow.
+    console.error(`FAILED ${pkg.name}@${pkg.version}: npm publish was refused`);
+    failed.push(`${pkg.name}@${pkg.version}`);
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
 }
 
 const verb = DRY ? 'would publish' : PACK_ONLY ? 'packed and checked' : 'published';
 console.log(`\n${verb} ${publishedCount} package(s).`);
+if (failed.length > 0) {
+  console.error(`not published: ${failed.join(', ')}`);
+  process.exit(1);
+}
