@@ -83,7 +83,13 @@ This document outlines the current implementation status and planned features fo
   publisher entry (the setting that lets the release workflow publish without a token) for the
   package does not authorise that workflow. Fix the entry and re-run the publish workflow, or
   publish by hand with Marlin's security key. Then the receipts app (receipt-ocr-app) can
-  upgrade to it and drop its three workarounds (2026-10-10)
+  upgrade to it and drop its three workarounds. The same refusal holds back
+  `@marlinjai/data-table-react` 0.5.0 (grouped tables with the full header and rows dragged
+  between groups, tag `react-v0.5.0`, publish run of 2026-10-10): its entry is missing too.
+  The entry is set on npmjs.com per package (Settings, Trusted Publisher: GitHub Actions, user
+  `marlinjai`, repository `marlinjai-data-table`, workflow `publish.yml`) and needs Marlin's
+  security key. Since 2026-10-10 a refused package no longer stops the others in a run, so
+  one re-run of the publish workflow publishes whatever has its entry (2026-10-10)
 
 - [x] Grouped tables: the full column header (resize, sort, alignment, reorder) in every group,
   and rows that are dragged from one group into another. Released as
