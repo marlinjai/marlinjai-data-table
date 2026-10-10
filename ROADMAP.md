@@ -77,6 +77,13 @@ This document outlines the current implementation status and planned features fo
   columns under concurrent creation, row reads failing after a schema edit, and
   unknown cell writes silently succeeding. Publish and verify the receipts upgrade.
   [Plan](docs/plans/2026-10-09-prisma-adapter-integrity.md) (2026-10-09)
+- [ ] Publish `@marlinjai/data-table-adapter-prisma` 0.2.3, the release that carries those
+  repairs (tag `adapter-prisma-v0.2.3` exists, npm latest is still 0.2.2). The publish run of
+  2026-10-09 failed with a 404 on the registry upload, which on this setup means npm's trusted
+  publisher entry (the setting that lets the release workflow publish without a token) for the
+  package does not authorise that workflow. Fix the entry and re-run the publish workflow, or
+  publish by hand with Marlin's security key. Then the receipts app (receipt-ocr-app) can
+  upgrade to it and drop its three workarounds (2026-10-10)
 
 ## Planned Features
 
