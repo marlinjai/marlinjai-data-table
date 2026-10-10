@@ -197,6 +197,45 @@ When `displayMode: 'nested'`:
 ▶ Parent Row 2           [depth: 0, collapsed]
 ```
 
+### Missing Parents
+
+A row whose parent is not among the rows passed to the table (filtered out, not matched by a
+search, deleted) is drawn as a top-level row. The same holds for rows whose parent links run in a
+circle. Every row is drawn exactly once; none disappears because the row above it is missing.
+
+### In Grouped Tables
+
+Since `@marlinjai/data-table-react` 0.6.0 a table with `groupConfig` nests sub-items too:
+
+- Only top-level rows are sorted into groups. A sub-item is drawn under its parent, in the group
+  the parent belongs to, whatever its own value in the grouped column is. It appears nowhere else.
+- The number in a group header counts every row drawn in the group once, folded or not.
+- Only top-level rows have the grip that drags a row into another group. Dropping a parent writes
+  the grouped column of the parent only; its sub-items follow it and keep their own values.
+
+### A Value Computed From the Children
+
+`getSubItemSummary(row, children, column)` lets a parent show a value in a column in place of its
+own cell, for example the sum of its children's amounts. It is asked for every row while sub-items
+are enabled, with an empty list for a row without children; returning `undefined` shows the row's
+own cell. The value is drawn read-only. It is never written and never part of `rows`.
+
+```tsx
+<TableView
+  subItemsConfig={{ enabled: true }}
+  getSubItemSummary={(row, children, column) =>
+    column.id === amountColumnId && children.length > 0
+      ? children.reduce((sum, child) => sum + Number(child.cells[amountColumnId] ?? 0), 0)
+      : undefined
+  }
+/>
+```
+
+### Rows That Do Not Count
+
+`isCountedRow(row)` leaves rows out of the number a group header shows and out of the footer
+calculations. Use it when a parent only holds other rows and is not an item itself.
+
 ## Best Practices
 
 1. **Limit Nesting Depth**: While technically unlimited, keep nesting to 2-3 levels for usability

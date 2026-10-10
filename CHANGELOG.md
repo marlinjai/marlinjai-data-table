@@ -19,6 +19,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`@marlinjai/data-table-adapter-data-brain`** — Use `adapter-d1` or `adapter-prisma` directly. Data Brain service is being archived; all consumers have been migrated to direct adapter usage.
 
+## [react-0.6.0] - 2026-10-11
+
+### Added
+
+- **`@marlinjai/data-table-react`** grouped tables nest sub-items: with `subItemsConfig.enabled` a child row is drawn under its parent, in the group the parent belongs to, and nowhere else. Parents fold and unfold as in the plain table. The number in a group header counts every row of the group once, folded or not
+- **`@marlinjai/data-table-react`** `getSubItemSummary(row, children, column)`: a parent can show a value computed from its direct children in place of its own cell (a sum, for example). Display only and read-only: the value is never written and never part of `rows`
+- **`@marlinjai/data-table-react`** `isCountedRow(row)`: rows that only hold other rows can be left out of the group header counts and the footer calculations
+- **`@marlinjai/data-table-react`** exports `buildRowTree`, `flattenRowTree` and `descendantsOf`
+- **`@marlinjai/data-table-react`** the fold button of a parent row says its state (`aria-expanded`) and has a label
+
+### Changed
+
+- **`@marlinjai/data-table-react`** dragging between groups with sub-items enabled: only top-level rows have the grip. Dropping a parent writes the grouped column of the parent only; its children follow it and keep their own values. From a selection, only the top-level rows are written
+
+### Fixed
+
+- **`@marlinjai/data-table-react`** a row whose parent is not among the rows (filtered out, not matched by a search, deleted) was not drawn at all. It is now a top-level row, and so are rows whose parent links run in a circle
+- **`@marlinjai/data-table-react`** `subItemsConfig.collapsedParents` is compared by content: a consumer that builds the list on every render no longer resets what the user folded
+
 ## [react-0.5.0] - 2026-10-10
 
 ### Added
