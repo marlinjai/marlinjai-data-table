@@ -193,3 +193,61 @@ function getGroupLabel(
       return key;
   }
 }
+
+/** The key of the group that holds rows without a value in the grouped column. */
+export const EMPTY_GROUP_KEY = '__empty__';
+
+const MOVABLE_GROUP_TYPES = new Set(['select', 'multi_select', 'text', 'url', 'number', 'boolean']);
+
+/**
+ * True when a row can be put into another group by writing the grouped column:
+ * the column type must be one whose value a group key can be turned back into.
+ * Dates are left out (a group is a day, a cell may carry a time), and so are
+ * computed columns (formula, rollup, timestamps), which cannot be written.
+ */
+export function canMoveBetweenGroups(columnType: string): boolean {
+  return MOVABLE_GROUP_TYPES.has(columnType);
+}
+
+/**
+ * The cell value that moves a row from the group `sourceKey` into the group
+ * `targetKey`. Returns null when the move changes nothing or the column type
+ * cannot be written from a group key.
+ *
+ * A multi-select row sits in one group per option, so moving it swaps the option
+ * of the group it was dragged out of for the target's and keeps its other options.
+ */
+export function valueForGroupMove(
+  columnType: string,
+  currentValue: unknown,
+  sourceKey: string,
+  targetKey: string
+): { value: string | number | boolean | string[] | null } | null {
+  if (!canMoveBetweenGroups(columnType) || sourceKey === targetKey) return null;
+  const toEmpty = targetKey === EMPTY_GROUP_KEY;
+
+  switch (columnType) {
+    case 'select':
+    case 'text':
+    case 'url':
+      return { value: toEmpty ? null : targetKey };
+    case 'number': {
+      if (toEmpty) return { value: null };
+      const n = Number(targetKey);
+      return Number.isFinite(n) ? { value: n } : null;
+    }
+    case 'boolean':
+      return { value: toEmpty ? null : targetKey === 'true' };
+    case 'multi_select': {
+      const current = Array.isArray(currentValue)
+        ? currentValue.filter((v): v is string => typeof v === 'string' && v.length > 0)
+        : [];
+      const kept = current.filter((v) => v !== sourceKey);
+      const next = toEmpty || kept.includes(targetKey) ? kept : [...kept, targetKey];
+      const unchanged = next.length === current.length && next.every((v, i) => v === current[i]);
+      return unchanged ? null : { value: next };
+    }
+    default:
+      return null;
+  }
+}

@@ -3,7 +3,15 @@ export { useTables, type UseTablesResult } from './useTables';
 export { useRows, type UseRowsOptions, type UseRowsResult } from './useRows';
 export { useColumns, type UseColumnsOptions, type UseColumnsResult } from './useColumns';
 export { useViews, type UseViewsOptions, type UseViewsResult } from './useViews';
-export { useGrouping, type UseGroupingOptions, type UseGroupingResult, type GroupedRow } from './useGrouping';
+export {
+  useGrouping,
+  canMoveBetweenGroups,
+  valueForGroupMove,
+  EMPTY_GROUP_KEY,
+  type UseGroupingOptions,
+  type UseGroupingResult,
+  type GroupedRow,
+} from './useGrouping';
 export {
   useDragAndDrop,
   type DragState,

@@ -85,6 +85,11 @@ This document outlines the current implementation status and planned features fo
   publish by hand with Marlin's security key. Then the receipts app (receipt-ocr-app) can
   upgrade to it and drop its three workarounds (2026-10-10)
 
+- [x] Grouped tables: the full column header (resize, sort, alignment, reorder) in every group,
+  and rows that are dragged from one group into another. Released as
+  `@marlinjai/data-table-react` 0.5.0.
+  [Plan](docs/plans/2026-10-10-grouped-table-header-and-group-drag.md) Done 2026-10-10.
+
 ## Planned Features
 
 ### Medium Priority
