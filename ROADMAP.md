@@ -96,10 +96,10 @@ This document outlines the current implementation status and planned features fo
   `@marlinjai/data-table-react` 0.5.0.
   [Plan](docs/plans/2026-10-10-grouped-table-header-and-group-drag.md) Done 2026-10-10.
 
-- [ ] Sub-items inside grouped tables: a child row under its parent in the parent's group, a value
-  a parent computes from its children, rows left out of the counts. Built and tested as
-  `@marlinjai/data-table-react` 0.6.0 for the receipts app (receipt-ocr-app), which groups every
-  view. Open: review, then the tag `react-v0.6.0` and the publish (2026-10-11)
+- [x] Sub-items inside grouped tables: a child row under its parent in the parent's group, a value
+  a parent computes from its children, rows left out of the counts. Published as
+  `@marlinjai/data-table-react` 0.6.0 (tag `react-v0.6.0`) for the receipts app
+  (receipt-ocr-app), which groups every view. Done 2026-10-11.
 
 ## Planned Features
 
