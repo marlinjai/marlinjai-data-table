@@ -167,6 +167,19 @@ describe('a parent shows a value computed from its children', () => {
     expect(rowEl(container, 'trip').querySelectorAll('td')[2].textContent).toContain('140');
   });
 
+  it('shows the consumer\'s note next to a computed value, and none where there is no value or no note', () => {
+    const note = vi.fn((row: Row, children: Row[]) => (row.id === 'trip' ? `1 of ${children.length}` : undefined));
+    const { container } = render(<TableView {...fixture()} getSubItemSummary={sum} getSubItemSummaryNote={note} />);
+    const cell = rowEl(container, 'trip').querySelectorAll('td')[2];
+    expect(cell.querySelector('.dt-summary-note')?.textContent).toBe('1 of 2');
+    expect(cell.textContent).toContain('140');
+    // A row without a computed value is never asked, and shows no note.
+    expect(rowEl(container, 'hotel').querySelector('.dt-summary-note')).toBeNull();
+    expect(note.mock.calls.every(([row]) => row.id === 'trip')).toBe(true);
+    // The first column of the parent shows its own cell: no value, so no note.
+    expect(rowEl(container, 'trip').querySelectorAll('td')[0].querySelector('.dt-summary-note')).toBeNull();
+  });
+
   it('other rows and other columns show their own cells', () => {
     const { container } = render(<TableView {...fixture()} getSubItemSummary={sum} />);
     expect(rowEl(container, 'hotel').querySelectorAll('td')[2].textContent).toContain('100');

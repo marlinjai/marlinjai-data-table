@@ -78,6 +78,12 @@ export interface TableViewProps {
    */
   getSubItemSummary?: (row: Row, children: Row[], column: Column) => CellValue | undefined;
   /**
+   * A short note shown next to a value from `getSubItemSummary`, for a summary
+   * that does not cover every child ("1 of 2", for example). Only asked where
+   * `getSubItemSummary` returned a value; return `undefined` for no note.
+   */
+  getSubItemSummaryNote?: (row: Row, children: Row[], column: Column) => string | undefined;
+  /**
    * Whether a row counts in the number a group header shows and in the footer
    * calculations. Defaults to every row. Lets a row that only holds others stay
    * out of the counts.
@@ -166,6 +172,7 @@ export function TableView({
   onCollapseRow,
   onCreateSubItem,
   getSubItemSummary,
+  getSubItemSummaryNote,
   isCountedRow,
   groupConfig,
   onGroupConfigChange,
@@ -346,6 +353,17 @@ export function TableView({
       }
     },
     [onToggleGroupCollapse, onGroupConfigChange, groupConfig]
+  );
+
+  // Fold or unfold every group at once. Written through the group config, so
+  // the consumer stores it like a single fold.
+  const allGroupsCollapsed = groups.length > 0 && groups.every((g) => g.isCollapsed);
+  const handleFoldAllGroups = useCallback(
+    (collapse: boolean) => {
+      if (!onGroupConfigChange || !groupConfig) return;
+      onGroupConfigChange({ ...groupConfig, collapsedGroups: collapse ? groups.map((g) => g.value) : [] });
+    },
+    [onGroupConfigChange, groupConfig, groups]
   );
 
   // Rows can be dragged from one group into another when the grouped column can be
@@ -979,6 +997,7 @@ export function TableView({
           const alignment = column.alignment ?? getDefaultAlignment(column.type);
           const isCellActive = enableKeyboardNav && activeCell !== null && rowIndex !== undefined && activeCell.rowIndex === rowIndex && activeCell.colIndex === colIndex;
           const summary = subItemsEnabled ? getSubItemSummary?.(row, rowChildren, column) : undefined;
+          const summaryNote = summary !== undefined && summary !== null ? getSubItemSummaryNote?.(row, rowChildren, column) : undefined;
 
           return (
             <td
@@ -1123,6 +1142,11 @@ export function TableView({
                     onGetRelationRowTitle={onGetRelationRowTitle}
                   />
                 </div>
+                {summaryNote && (
+                  <span className="dt-summary-note" style={{ marginLeft: '6px', flexShrink: 0, fontSize: '12px', color: 'var(--dt-text-muted)', whiteSpace: 'nowrap' }}>
+                    {summaryNote}
+                  </span>
+                )}
                 {/* OPEN button on primary column */}
                 {isFirstColumn && onRowOpen && (
                   <button
@@ -1383,6 +1407,26 @@ export function TableView({
             let runningIndex = 0;
             return (
               <>
+                {onGroupConfigChange && groupConfig && groups.length > 1 && (
+                  <div className="dt-group-fold-all" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleFoldAllGroups(!allGroupsCollapsed)}
+                      aria-expanded={!allGroupsCollapsed}
+                      style={{
+                        padding: '2px 8px',
+                        border: 'none',
+                        borderRadius: '4px',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        color: 'var(--dt-text-secondary)',
+                      }}
+                    >
+                      {allGroupsCollapsed ? 'Expand all' : 'Collapse all'}
+                    </button>
+                  </div>
+                )}
                 {groupLayouts.map(({ group, flatRows, rowCount }) => (
                   <div
                     key={group.value}

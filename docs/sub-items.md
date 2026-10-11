@@ -247,3 +247,7 @@ calculations. Use it when a parent only holds other rows and is not an item itse
 
 - [Architecture - Sub-items Section](/projects/data-table/architecture#sub-items-hierarchical-rows)
 - [API Reference](/projects/data-table/api)
+
+A summary that does not cover every child can say so: `getSubItemSummaryNote(row, children, column)`
+(since 0.7.0) returns a short text such as "1 of 2", drawn muted next to the value. It is only
+asked where `getSubItemSummary` returned a value.
