@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`@marlinjai/data-table-adapter-data-brain`** — Use `adapter-d1` or `adapter-prisma` directly. Data Brain service is being archived; all consumers have been migrated to direct adapter usage.
 
+## [react-0.7.0] - 2026-10-11
+
+### Added
+
+- **`@marlinjai/data-table-react`** `getSubItemSummaryNote(row, children, column)`: a short note next to a value from `getSubItemSummary`, for a summary that does not cover every child ("1 of 2"). Drawn muted beside the value, only where a value is shown
+- **`@marlinjai/data-table-react`** grouped tables fold and unfold all groups at once: a "Collapse all" / "Expand all" control above the first group, shown when the consumer passes `onGroupConfigChange` and there is more than one group. It writes `collapsedGroups` in one change, so the state is stored like a single fold
+- **`@marlinjai/data-table-react`** `FilterBar` takes `bare`: no padding, background, border or shadow of its own, for a host that places the bar inside its own toolbar
+
 ## [react-0.6.0] - 2026-10-11
 
 ### Added

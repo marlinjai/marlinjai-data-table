@@ -153,3 +153,44 @@ describe('dragging a row into another group', () => {
     expect(container.querySelector('.dt-row-grip')).toBeNull();
   });
 });
+
+describe('all groups are folded and unfolded at once', () => {
+  const keys = (container: HTMLElement) => [...container.querySelectorAll('[data-group-key]')].map((el) => el.getAttribute('data-group-key') as string);
+  const foldAll = (container: HTMLElement) => container.querySelector('.dt-group-fold-all button') as HTMLButtonElement | null;
+
+  it('folding all writes every group into the group config, in one change', () => {
+    const f = fixture();
+    const onGroupConfigChange = vi.fn();
+    const { container } = render(<TableView {...f} onGroupConfigChange={onGroupConfigChange} />);
+    const button = foldAll(container) as HTMLButtonElement;
+    expect(button.textContent).toBe('Collapse all');
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(button);
+    expect(onGroupConfigChange).toHaveBeenCalledTimes(1);
+    expect(onGroupConfigChange).toHaveBeenCalledWith({ ...f.groupConfig, collapsedGroups: keys(container) });
+  });
+
+  it('with every group folded the control unfolds all, and no rows are drawn until then', () => {
+    const f = fixture();
+    const onGroupConfigChange = vi.fn();
+    const all = keys(render(<TableView {...f} />).container);
+    const { container } = render(<TableView {...f} groupConfig={{ ...f.groupConfig, collapsedGroups: all }} onGroupConfigChange={onGroupConfigChange} />);
+    expect(container.querySelectorAll('tr[data-row-id]')).toHaveLength(0);
+    const button = foldAll(container) as HTMLButtonElement;
+    expect(button.textContent).toBe('Expand all');
+    fireEvent.click(button);
+    expect(onGroupConfigChange).toHaveBeenCalledWith({ ...f.groupConfig, collapsedGroups: [] });
+  });
+
+  it('with only some groups folded it offers to fold the rest', () => {
+    const f = fixture();
+    const [first] = keys(render(<TableView {...f} />).container);
+    const { container } = render(<TableView {...f} groupConfig={{ ...f.groupConfig, collapsedGroups: [first] }} onGroupConfigChange={() => {}} />);
+    expect((foldAll(container) as HTMLButtonElement).textContent).toBe('Collapse all');
+  });
+
+  it('is not offered when the consumer cannot store the fold state', () => {
+    const { container } = render(<TableView {...fixture()} />);
+    expect(foldAll(container)).toBeNull();
+  });
+});

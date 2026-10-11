@@ -499,6 +499,14 @@
   flex-wrap: wrap;
 }
 
+/* Inside a host's own toolbar: no frame of its own. */
+.dt-filter-bar.dt-filter-bar-bare {
+  padding: 0;
+  border-bottom: none;
+  background-color: transparent;
+  box-shadow: none;
+}
+
 .dt-filter-chip {
   display: inline-flex;
   align-items: center;

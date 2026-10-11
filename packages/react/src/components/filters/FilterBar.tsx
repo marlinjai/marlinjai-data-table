@@ -6,6 +6,11 @@ export interface FilterBarProps {
   filters: QueryFilter[];
   selectOptions?: Map<string, SelectOption[]>;
   onFiltersChange: (filters: QueryFilter[]) => void;
+  /**
+   * Draw the bar without its own frame (no padding, background, border or
+   * shadow), for a host that places it inside a toolbar of its own.
+   */
+  bare?: boolean;
 }
 
 const OPERATORS_BY_TYPE: Record<string, { value: FilterOperator; label: string }[]> = {
@@ -61,6 +66,7 @@ export function FilterBar({
   filters,
   selectOptions = new Map(),
   onFiltersChange,
+  bare = false,
 }: FilterBarProps) {
   const [isAddingFilter, setIsAddingFilter] = useState(false);
 
@@ -110,15 +116,15 @@ export function FilterBar({
 
   return (
     <div
-      className="dt-filter-bar"
+      className={bare ? 'dt-filter-bar dt-filter-bar-bare' : 'dt-filter-bar'}
       style={{
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'center',
         gap: '8px',
-        padding: '8px 12px',
-        backgroundColor: 'var(--dt-bg-secondary)',
-        borderBottom: '1px solid var(--dt-border-color)',
+        ...(bare
+          ? { padding: 0, backgroundColor: 'transparent', borderBottom: 'none', boxShadow: 'none' }
+          : { padding: '8px 12px', backgroundColor: 'var(--dt-bg-secondary)', borderBottom: '1px solid var(--dt-border-color)' }),
       }}
     >
       {filters.map((filter, index) => {
