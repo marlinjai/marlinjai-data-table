@@ -43,3 +43,4 @@ yarn.lock
 docs-dist/  
 
 .infisical.json
+.infisical.yaml
