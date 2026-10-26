@@ -1,4 +1,4 @@
-name: Verify Prisma adapter
+name: Verify
 on:
   pull_request:
   push:
@@ -6,6 +6,25 @@ on:
 permissions:
   contents: read
 jobs:
+  # Every package: build, typecheck and unit tests. Until 2026-10-26 only the Prisma adapter was checked, so a
+  # change to the react package (useTable's select options, 0.7.1) merged on checks that never ran its tests.
+  packages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The adapter's typecheck needs its generated client.
+      - run: pnpm --filter @marlinjai/data-table-adapter-prisma prisma:generate
+      # The packages typecheck against each other's built types.
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm test
   adapter:
     runs-on: ubuntu-latest
     timeout-minutes: 15
