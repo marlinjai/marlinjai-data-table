@@ -19,6 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`@marlinjai/data-table-adapter-data-brain`** — Use `adapter-d1` or `adapter-prisma` directly. Data Brain service is being archived; all consumers have been migrated to direct adapter usage.
 
+## [react-0.7.1] - 2026-10-26
+
+### Fixed
+
+- **`@marlinjai/data-table-react`** `useTable` loads the options of every select and multi-select column at once instead of one after another, and never asks again for a column that is loaded or on its way. Before, each answer re-ran the loader with an old copy of the options, so the same columns were asked for again (six extra requests in a row on the receipts dashboard). A table switch starts afresh and drops late answers for the old table
+- **`@marlinjai/data-table-react`** a failed option load no longer goes unnoticed or stops the other columns: the column stays unloaded and is asked again on the next change
+
+### Added
+
+- **`@marlinjai/data-table-react`** `useTable` returns `selectOptionsError`, the last failed option load. `loadSelectOptions` stays an explicit reload: it always fetches, its answer wins over an older one still on its way, and it rejects on failure
+
 ## [react-0.7.0] - 2026-10-11
 
 ### Added
