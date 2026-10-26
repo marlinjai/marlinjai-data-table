@@ -26,6 +26,7 @@ const {
   isLoading,
   isRowsLoading,
   selectOptions,
+  selectOptionsError,
   filters,
   sorts,
   setFilters,
@@ -61,7 +62,8 @@ const {
 | `hasMore` | `boolean` | Whether more rows can be loaded |
 | `isLoading` | `boolean` | Initial loading state |
 | `isRowsLoading` | `boolean` | Loading state for row fetching |
-| `selectOptions` | `Map<string, SelectOption[]>` | Options by column ID |
+| `selectOptions` | `Map<string, SelectOption[]>` | Options by column ID. Every select and multi-select column without options is loaded at once, each column once; a column that arrives later loads on its own |
+| `selectOptionsError` | `Error \| null` | The last failed option load. The failed column stays unloaded and is asked again on the next change |
 | `filters` | `QueryFilter[]` | Active filters |
 | `sorts` | `QuerySort[]` | Active sorts |
 | `setFilters` | `(filters: QueryFilter[]) => void` | Update filters |
@@ -73,7 +75,7 @@ const {
 | `addRow` | `(cells?) => Promise<Row>` | Add a new row |
 | `deleteRow` | `(rowId) => Promise` | Delete a row |
 | `loadMore` | `() => Promise` | Load more rows (pagination) |
-| `loadSelectOptions` | `(columnId) => Promise` | Load select options |
+| `loadSelectOptions` | `(columnId) => Promise` | Reload one column's options. Always fetches, even when they are loaded or on their way; rejects on failure |
 | `createSelectOption` | `(columnId, name, color?) => Promise` | Create option |
 | `updateSelectOption` | `(optionId, updates) => Promise` | Update option |
 | `deleteSelectOption` | `(columnId, optionId) => Promise` | Delete option |

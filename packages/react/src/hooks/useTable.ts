@@ -51,6 +51,8 @@ export interface UseTableResult {
 
   // Select options
   selectOptions: Map<string, SelectOption[]>;
+  /** The last failed select option load; the failed column is asked again on the next change. */
+  selectOptionsError: Error | null;
   loadSelectOptions: (columnId: string) => Promise<void>;
   createSelectOption: (columnId: string, name: string, color?: string) => Promise<SelectOption>;
   updateSelectOption: (optionId: string, updates: { name?: string; color?: string }) => Promise<SelectOption>;
@@ -88,6 +90,30 @@ export interface UseTableResult {
   deleteFile: (rowId: string, columnId: string, fileId: string) => Promise<void>;
 }
 
+/**
+ * Which columns' select options a table has, and which are on their way. Kept in a
+ * ref, not in state, so a re-render never sees an old value and asks twice.
+ */
+interface SelectOptionLoads {
+  tableId: string;
+  loaded: Set<string>;
+  inFlight: Set<string>;
+  /** The latest request per column, so an older answer never overwrites a newer one. */
+  requests: Map<string, number>;
+}
+
+function createSelectOptionLoads(tableId: string, loaded: string[] = []): SelectOptionLoads {
+  return { tableId, loaded: new Set(loaded), inFlight: new Set(), requests: new Map() };
+}
+
+function isSelectColumn(column: Column): boolean {
+  return column.type === 'select' || column.type === 'multi_select';
+}
+
+function toSelectOptionsError(err: unknown): Error {
+  return err instanceof Error ? err : new Error('Failed to load select options');
+}
+
 export function useTable({
   tableId,
   initialFilters = [],
@@ -115,7 +141,10 @@ export function useTable({
   const [selectOptions, setSelectOptions] = useState<Map<string, SelectOption[]>>(
     buildInitialSelectOptions
   );
-  const hasInitialSelectOptions = initialData?.selectOptions !== undefined;
+  const [selectOptionsError, setSelectOptionsError] = useState<Error | null>(null);
+  const selectOptionLoadsRef = useRef<SelectOptionLoads>(
+    createSelectOptionLoads(tableId, Object.keys(initialData?.selectOptions ?? {}))
+  );
 
   // Use column and row hooks — pass initialData through
   const columnsHook = useColumns({ tableId, initialColumns: initialData?.columns });
@@ -150,32 +179,69 @@ export function useTable({
     fetchTable();
   }, [dbAdapter, tableId]);
 
-  // Load select options for select/multi_select columns
-  useEffect(() => {
-    // If we got initial select options, or if there's no way to load them, skip
-    if (!dbAdapter && !actions?.getSelectOptions) return;
-
-    const loadOptions = async () => {
-      const selectColumns = columnsHook.columns.filter(
-        (c) => c.type === 'select' || c.type === 'multi_select'
-      );
-
-      const getOptionsFn = actions?.getSelectOptions
-        ?? (dbAdapter ? (id: string) => dbAdapter.getSelectOptions(id) : undefined);
-      if (!getOptionsFn) return;
-
-      for (const column of selectColumns) {
-        if (!selectOptions.has(column.id)) {
-          const options = await getOptionsFn(column.id);
-          setSelectOptions((prev) => new Map(prev).set(column.id, options));
-        }
-      }
-    };
-
-    if (columnsHook.columns.length > 0) {
-      loadOptions();
+  // The loads of the current table; a table switch starts afresh.
+  const currentSelectOptionLoads = useCallback((): SelectOptionLoads => {
+    if (selectOptionLoadsRef.current.tableId !== tableId) {
+      selectOptionLoadsRef.current = createSelectOptionLoads(tableId);
     }
-  }, [dbAdapter, actions, columnsHook.columns, selectOptions]);
+    return selectOptionLoadsRef.current;
+  }, [tableId]);
+
+  const getSelectOptionsFn = useCallback(
+    (): ((columnId: string) => Promise<SelectOption[]>) | undefined =>
+      actions?.getSelectOptions
+        ?? (dbAdapter ? (id: string) => dbAdapter.getSelectOptions(id) : undefined),
+    [actions, dbAdapter]
+  );
+
+  // Fetch one column's options. Throws on failure, and leaves the column unloaded so
+  // it is asked again later. An answer for a table that is no longer shown, or older
+  // than a later request for the same column, is dropped.
+  const fetchSelectOptions = useCallback(
+    async (
+      loads: SelectOptionLoads,
+      columnId: string,
+      getOptionsFn: (columnId: string) => Promise<SelectOption[]>
+    ) => {
+      const request = (loads.requests.get(columnId) ?? 0) + 1;
+      loads.requests.set(columnId, request);
+      loads.inFlight.add(columnId);
+      const isCurrent = () =>
+        selectOptionLoadsRef.current === loads && loads.requests.get(columnId) === request;
+      try {
+        const options = await getOptionsFn(columnId);
+        if (!isCurrent()) return;
+        loads.loaded.add(columnId);
+        setSelectOptions((prev) => new Map(prev).set(columnId, options));
+      } catch (err) {
+        if (isCurrent()) throw err;
+      } finally {
+        if (loads.requests.get(columnId) === request) loads.inFlight.delete(columnId);
+      }
+    },
+    []
+  );
+
+  // Load select options for select/multi_select columns: every missing column at
+  // once, and never a column that is already loaded or on its way.
+  useEffect(() => {
+    const getOptionsFn = getSelectOptionsFn();
+    if (!getOptionsFn) return;
+
+    const loads = currentSelectOptionLoads();
+    const missing = columnsHook.columns
+      .filter((c) => isSelectColumn(c) && !loads.loaded.has(c.id) && !loads.inFlight.has(c.id))
+      .map((c) => c.id);
+    if (missing.length === 0) return;
+
+    Promise.allSettled(
+      missing.map((columnId) => fetchSelectOptions(loads, columnId, getOptionsFn))
+    ).then((results) => {
+      if (selectOptionLoadsRef.current !== loads) return;
+      const failed = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+      setSelectOptionsError(failed ? toSelectOptionsError(failed.reason) : null);
+    });
+  }, [getSelectOptionsFn, currentSelectOptionLoads, fetchSelectOptions, columnsHook.columns]);
 
   const updateTable = useCallback(
     async (updates: UpdateTableInput) => {
@@ -187,15 +253,20 @@ export function useTable({
     [dbAdapter, tableId]
   );
 
+  // An explicit reload: always fetches, even when the column is loaded or on its way.
   const loadSelectOptions = useCallback(
     async (columnId: string) => {
-      const getOptionsFn = actions?.getSelectOptions
-        ?? (dbAdapter ? (id: string) => dbAdapter.getSelectOptions(id) : undefined);
+      const getOptionsFn = getSelectOptionsFn();
       if (!getOptionsFn) throw new Error('No getSelectOptions action or dbAdapter available');
-      const options = await getOptionsFn(columnId);
-      setSelectOptions((prev) => new Map(prev).set(columnId, options));
+      try {
+        await fetchSelectOptions(currentSelectOptionLoads(), columnId, getOptionsFn);
+      } catch (err) {
+        const error = toSelectOptionsError(err);
+        setSelectOptionsError(error);
+        throw error;
+      }
     },
-    [actions, dbAdapter]
+    [getSelectOptionsFn, currentSelectOptionLoads, fetchSelectOptions]
   );
 
   const createSelectOption = useCallback(
@@ -370,6 +441,7 @@ export function useTable({
 
     // Select options
     selectOptions,
+    selectOptionsError,
     loadSelectOptions,
     createSelectOption,
     updateSelectOption,
