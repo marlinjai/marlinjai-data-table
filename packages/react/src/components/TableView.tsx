@@ -68,6 +68,12 @@ export interface TableViewProps {
   subItemsConfig?: SubItemsConfig;
   onExpandRow?: (rowId: string) => void;
   onCollapseRow?: (rowId: string) => void;
+  /**
+   * "Collapse all" and "Expand all" in a grouped table with sub-items. Called
+   * once with the whole new fold state, sections and parents together, so the
+   * consumer stores it in one write. Without it the control folds sections only.
+   */
+  onFoldAll?: (state: { collapsedGroups: string[]; collapsedParents: string[] }) => void;
   onCreateSubItem?: (parentRowId: string) => void;
   /**
    * A value a parent row shows in a column in place of its own cell, computed
@@ -170,6 +176,7 @@ export function TableView({
   subItemsConfig,
   onExpandRow,
   onCollapseRow,
+  onFoldAll,
   onCreateSubItem,
   getSubItemSummary,
   getSubItemSummaryNote,
@@ -356,14 +363,25 @@ export function TableView({
   );
 
   // Fold or unfold every group at once. Written through the group config, so
-  // the consumer stores it like a single fold.
+  // the consumer stores it like a single fold. With `onFoldAll` the parents fold
+  // along. Parents not among the rows at hand keep their state.
   const allGroupsCollapsed = groups.length > 0 && groups.every((g) => g.isCollapsed);
   const handleFoldAllGroups = useCallback(
     (collapse: boolean) => {
+      const collapsedGroups = collapse ? groups.map((g) => g.value) : [];
+      if (onFoldAll) {
+        const parents = [...rowChildrenMap.keys()];
+        const collapsedParents = collapse
+          ? [...new Set([...localCollapsedParents, ...parents])]
+          : [...localCollapsedParents].filter((id) => !rowChildrenMap.has(id));
+        setLocalCollapsedParents(new Set(collapsedParents));
+        onFoldAll({ collapsedGroups, collapsedParents });
+        return;
+      }
       if (!onGroupConfigChange || !groupConfig) return;
-      onGroupConfigChange({ ...groupConfig, collapsedGroups: collapse ? groups.map((g) => g.value) : [] });
+      onGroupConfigChange({ ...groupConfig, collapsedGroups });
     },
-    [onGroupConfigChange, groupConfig, groups]
+    [onFoldAll, onGroupConfigChange, groupConfig, groups, rowChildrenMap, localCollapsedParents]
   );
 
   // Rows can be dragged from one group into another when the grouped column can be
