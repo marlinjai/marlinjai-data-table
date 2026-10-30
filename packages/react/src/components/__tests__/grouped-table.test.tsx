@@ -189,6 +189,62 @@ describe('all groups are folded and unfolded at once', () => {
     expect((foldAll(container) as HTMLButtonElement).textContent).toBe('Collapse all');
   });
 
+  describe('with sub-items', () => {
+    function nested() {
+      const f = fixture();
+      const [first, second, third] = f.rows;
+      const rows = [first, second, { ...third, parentRowId: first.id }];
+      return { ...f, rows, subItemsConfig: { enabled: true, collapsedParents: ['elsewhere'] } };
+    }
+
+    it('collapse all folds sections and parents in one call, and leaves other parents folded', () => {
+      const f = nested();
+      const onFoldAll = vi.fn();
+      const onGroupConfigChange = vi.fn();
+      const { container } = render(<TableView {...f} onFoldAll={onFoldAll} onGroupConfigChange={onGroupConfigChange} />);
+      expect(rowEl(container, f.rows[2].id)).not.toBeNull();
+      const groups = keys(container);
+      fireEvent.click(foldAll(container) as HTMLElement);
+      expect(onFoldAll).toHaveBeenCalledTimes(1);
+      expect(onFoldAll).toHaveBeenCalledWith({ collapsedGroups: groups, collapsedParents: ['elsewhere', f.rows[0].id] });
+      expect(onGroupConfigChange).not.toHaveBeenCalled();
+    });
+
+    it('a section opened after collapse all shows its parent folded', () => {
+      const f = nested();
+      const { container, rerender } = render(<TableView {...f} onFoldAll={() => {}} onGroupConfigChange={() => {}} />);
+      fireEvent.click(foldAll(container) as HTMLElement);
+      rerender(<TableView {...f} subItemsConfig={{ enabled: true, collapsedParents: ['elsewhere', f.rows[0].id] }} onFoldAll={() => {}} onGroupConfigChange={() => {}} />);
+      expect(rowEl(container, f.rows[0].id)).not.toBeNull();
+      expect(rowEl(container, f.rows[2].id)).toBeNull();
+    });
+
+    it('expand all opens sections and the parents at hand, not parents it cannot see', () => {
+      const f = nested();
+      const all = keys(render(<TableView {...f} />).container);
+      const onFoldAll = vi.fn();
+      const { container } = render(
+        <TableView
+          {...f}
+          groupConfig={{ ...f.groupConfig, collapsedGroups: all }}
+          subItemsConfig={{ enabled: true, collapsedParents: ['elsewhere', f.rows[0].id] }}
+          onFoldAll={onFoldAll}
+          onGroupConfigChange={() => {}}
+        />,
+      );
+      fireEvent.click(foldAll(container) as HTMLElement);
+      expect(onFoldAll).toHaveBeenCalledWith({ collapsedGroups: [], collapsedParents: ['elsewhere'] });
+    });
+
+    it('without onFoldAll only the sections fold, as before', () => {
+      const f = nested();
+      const onGroupConfigChange = vi.fn();
+      const { container } = render(<TableView {...f} onGroupConfigChange={onGroupConfigChange} />);
+      fireEvent.click(foldAll(container) as HTMLElement);
+      expect(onGroupConfigChange).toHaveBeenCalledWith({ ...f.groupConfig, collapsedGroups: keys(container) });
+    });
+  });
+
   it('is not offered when the consumer cannot store the fold state', () => {
     const { container } = render(<TableView {...fixture()} />);
     expect(foldAll(container)).toBeNull();
