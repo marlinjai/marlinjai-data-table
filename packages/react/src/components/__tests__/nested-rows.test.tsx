@@ -236,6 +236,48 @@ describe('dragging between groups with sub-items', () => {
   });
 });
 
+describe('the space for the grips', () => {
+  const selectCell = (el: Element) => el.querySelector('.dt-select-control') as HTMLElement;
+  const selectable = { selectedRows: new Set<string>(), onSelectionChange: () => {} };
+
+  it('every row and the header keep a slot beside the checkbox, so the checkboxes line up', () => {
+    const { container } = render(<TableView {...fixture()} onCellChange={() => {}} {...selectable} />);
+    const header = container.querySelector('thead tr') as HTMLElement;
+    for (const el of [header, rowEl(container, 'trip'), rowEl(container, 'hotel')]) {
+      expect(selectCell(el).firstElementChild?.classList.contains('dt-row-grip-slot')).toBe(true);
+      expect(selectCell(el).lastElementChild?.tagName).toBe('INPUT');
+    }
+    expect(rowEl(container, 'hotel').querySelector('.dt-row-grip')).toBeNull();
+    expect(container.querySelector('thead .dt-row-grip')).toBeNull();
+  });
+
+  it('a table without grips keeps the narrow selection column', () => {
+    const { container } = render(<TableView {...fixture()} readOnly {...selectable} />);
+    expect(container.querySelector('.dt-select-col')).not.toBeNull();
+    expect(container.querySelector('.dt-select-col-grips')).toBeNull();
+    expect(container.querySelector('.dt-row-grip-slot')).toBeNull();
+  });
+
+  it('without a selection column the grip sits in the first cell, inside its own slot', () => {
+    const { container } = render(<TableView {...fixture()} onCellChange={() => {}} />);
+    const grip = rowEl(container, 'trip').querySelector('.dt-row-grip') as HTMLElement;
+    expect(grip.classList.contains('dt-row-grip-slot')).toBe(true);
+    expect(grip.closest('td')).toBe(rowEl(container, 'trip').querySelectorAll('td')[0]);
+  });
+
+  it('pausing the moves takes the grips away and keeps the column, and they come back', () => {
+    const f = { ...fixture(), onMoveRows: vi.fn(), ...selectable };
+    const table = (moveRowsDisabled: boolean) => <TableView {...f} moveRowsDisabled={moveRowsDisabled} />;
+    const { container, rerender } = render(table(false));
+    expect(rowEl(container, 'hotel').querySelector('.dt-row-grip')).not.toBeNull();
+    rerender(table(true));
+    expect(rowEl(container, 'hotel').querySelector('.dt-row-grip')).toBeNull();
+    expect(container.querySelector('.dt-select-col-grips')).not.toBeNull();
+    rerender(table(false));
+    expect(rowEl(container, 'hotel').querySelector('.dt-row-grip')).not.toBeNull();
+  });
+});
+
 describe('keyboard selection walks the rows as they are drawn', () => {
   it('Shift+ArrowDown from the first row selects the parent and then its first child', () => {
     const f = fixture();
