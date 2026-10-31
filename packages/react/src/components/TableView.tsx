@@ -97,6 +97,8 @@ export interface TableViewProps {
    * are top-level rows again. Without it a sub-item has no grip.
    */
   onMoveRows?: (rowIds: string[], parentRowId: string | null) => void;
+  /** Pause `onMoveRows` for a moment: the grips leave, the column they sit in stays. */
+  moveRowsDisabled?: boolean;
   /**
    * Which rows can hold others. Defaults to the rows that have sub-items; pass it
    * when a parent can be told apart otherwise, so one whose sub-items are all
@@ -209,6 +211,7 @@ export function TableView({
   onCollapseRow,
   onFoldAll,
   onMoveRows,
+  moveRowsDisabled = false,
   canHoldRows,
   rowGripLabel = 'Drag to move',
   onCreateSubItem,
@@ -441,7 +444,9 @@ export function TableView({
     setDragOverRow(null);
   }, []);
 
-  const canMoveRows = subItemsEnabled && !readOnly && !!onMoveRows;
+  const canMoveRows = subItemsEnabled && !readOnly && !!onMoveRows && !moveRowsDisabled;
+  // Space for the grips is kept on every row, so the table does not shift while they come and go.
+  const hasRowGrips = canDragRows || (subItemsEnabled && !readOnly && !!onMoveRows);
   const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
   const holdsRows = (row: Row) => (canHoldRows ? canHoldRows(row) : rowChildrenMap.has(row.id));
   const parentOf = (row: Row) => (row.parentRowId ? rowById.get(row.parentRowId) : undefined);
@@ -550,10 +555,12 @@ export function TableView({
   const rowCanBeDragged = (row: Row, depth: number, groupKey: string | undefined) =>
     (canDragRows && groupKey !== undefined && depth === 0) || (canMoveRows && !holdsRows(row));
 
-  const renderRowGrip = (rowId: string, draggable: boolean) =>
-    draggable ? (
+  const renderRowGrip = (rowId: string, draggable: boolean) => {
+    if (!hasRowGrips) return null;
+    if (!draggable) return <span className="dt-row-grip-slot" />;
+    return (
       <span
-        className="dt-row-grip"
+        className="dt-row-grip-slot dt-row-grip"
         role="button"
         aria-label={rowGripLabel}
         title={rowGripLabel}
@@ -563,16 +570,26 @@ export function TableView({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor" style={{ display: 'block' }} aria-hidden="true">
-          <circle cx="2" cy="2" r="1.2" />
-          <circle cx="6" cy="2" r="1.2" />
-          <circle cx="2" cy="7" r="1.2" />
-          <circle cx="6" cy="7" r="1.2" />
-          <circle cx="2" cy="12" r="1.2" />
-          <circle cx="6" cy="12" r="1.2" />
+        <svg width="9" height="13" viewBox="0 0 9 13" fill="currentColor" style={{ display: 'block' }} aria-hidden="true">
+          <circle cx="2" cy="1.5" r="1.25" />
+          <circle cx="7" cy="1.5" r="1.25" />
+          <circle cx="2" cy="6.5" r="1.25" />
+          <circle cx="7" cy="6.5" r="1.25" />
+          <circle cx="2" cy="11.5" r="1.25" />
+          <circle cx="7" cy="11.5" r="1.25" />
         </svg>
       </span>
-    ) : null;
+    );
+  };
+
+  /** The selection column: the checkbox, beside the grip's slot when the rows have grips. */
+  const selectColumnClass = hasRowGrips ? 'dt-select-col dt-select-col-grips' : 'dt-select-col';
+  const renderSelectControl = (grip: React.ReactNode, checkbox: React.ReactNode) => (
+    <div className="dt-select-control">
+      {grip}
+      {checkbox}
+    </div>
+  );
 
   // Update widths when columns change
   useEffect(() => {
@@ -1108,21 +1125,16 @@ export function TableView({
         }}
       >
         {onSelectionChange && (
-          <td
-            style={{
-              padding: '4px 8px',
-              ...getCellBorderStyles(false),
-              textAlign: 'center',
-              position: 'relative',
-            }}
-          >
-            {renderRowGrip(row.id, canDrag)}
-            <input
-              type="checkbox"
-              checked={selectedRows.has(row.id)}
-              onChange={() => handleSelectRow(row.id)}
-              style={{ cursor: 'pointer' }}
-            />
+          <td className={selectColumnClass} style={getCellBorderStyles(false)}>
+            {renderSelectControl(
+              renderRowGrip(row.id, canDrag),
+              <input
+                type="checkbox"
+                checked={selectedRows.has(row.id)}
+                onChange={() => handleSelectRow(row.id)}
+                style={{ cursor: 'pointer' }}
+              />,
+            )}
           </td>
         )}
         {orderedColumns.map((column, colIndex) => {
@@ -1152,7 +1164,6 @@ export function TableView({
                 position: 'relative',
               }}
             >
-              {isFirstColumn && !onSelectionChange && renderRowGrip(row.id, canDrag)}
               <div
                 style={{
                   display: 'flex',
@@ -1160,6 +1171,7 @@ export function TableView({
                   paddingLeft: isFirstColumn && subItemsEnabled ? indentPx : 0,
                 }}
               >
+                {isFirstColumn && !onSelectionChange && renderRowGrip(row.id, canDrag)}
                 {/* Expand/collapse toggle for first column when sub-items enabled */}
                 {isFirstColumn && subItemsEnabled && (
                   <div
@@ -1446,34 +1458,58 @@ export function TableView({
         .dt-resize-handle:focus-visible {
           outline: none;
         }
-        .dt-row-grip {
-          position: absolute;
-          left: 0;
-          top: 50%;
-          transform: translateY(-50%);
+        .dt-select-col {
+          width: 40px;
+          min-width: 40px;
+          padding: 4px;
+        }
+        .dt-select-col-grips {
+          width: 56px;
+          min-width: 56px;
+        }
+        .dt-select-control {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 14px;
-          height: 22px;
-          border-radius: 3px;
+          gap: 6px;
+        }
+        .dt-row-grip-slot {
+          flex: none;
+          width: 20px;
+          height: 24px;
+        }
+        .dt-row-grip {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 4px;
           color: var(--dt-text-muted);
           cursor: grab;
           opacity: 0;
-          transition: opacity 0.12s ease-out;
-          z-index: 1;
+          transition: opacity 0.12s ease-out, background-color 0.12s ease-out, color 0.12s ease-out;
         }
         tr:hover .dt-row-grip,
         tr[data-row-selected] .dt-row-grip,
         tr.dt-row-dragging .dt-row-grip {
           opacity: 1;
         }
-        .dt-row-grip:hover {
+        .dt-row-grip:hover,
+        tr.dt-row-dragging .dt-row-grip {
           background-color: var(--dt-border-color);
-          color: var(--dt-text-secondary);
+          color: var(--dt-text-primary);
         }
         .dt-row-grip:active {
           cursor: grabbing;
+        }
+        /* A row is dragged with a mouse, so a touch screen gives the space to the table. */
+        @media (hover: none) {
+          .dt-select-col-grips {
+            width: 40px;
+            min-width: 40px;
+          }
+          .dt-row-grip-slot {
+            display: none;
+          }
         }
         tr.dt-row-dragging {
           opacity: 0.45;
@@ -1608,8 +1644,11 @@ export function TableView({
                         <thead>
                           <tr style={{ backgroundColor: 'var(--dt-bg-secondary)' }}>
                             {onSelectionChange && (
-                              <th style={{ width: '40px', minWidth: '40px', padding: '10px 8px', ...getCellBorderStyles(false), textAlign: 'center' }}>
-                                <input type="checkbox" checked={false} onChange={handleSelectAll} style={{ cursor: 'pointer' }} />
+                              <th className={selectColumnClass} style={getCellBorderStyles(false)}>
+                                {renderSelectControl(
+                                  hasRowGrips ? <span className="dt-row-grip-slot" /> : null,
+                                  <input type="checkbox" checked={false} onChange={handleSelectAll} style={{ cursor: 'pointer' }} />,
+                                )}
                               </th>
                             )}
                             {orderedColumns.map(renderHeaderCell)}
@@ -1657,21 +1696,16 @@ export function TableView({
           <thead>
             <tr style={{ backgroundColor: 'var(--dt-bg-secondary)' }}>
               {onSelectionChange && (
-                <th
-                  style={{
-                    width: '40px',
-                    minWidth: '40px',
-                    padding: '10px 8px',
-                    ...getCellBorderStyles(false),
-                    textAlign: 'center',
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={rows.length > 0 && selectedRows.size === rows.length}
-                    onChange={handleSelectAll}
-                    style={{ cursor: 'pointer' }}
-                  />
+                <th className={selectColumnClass} style={getCellBorderStyles(false)}>
+                  {renderSelectControl(
+                    hasRowGrips ? <span className="dt-row-grip-slot" /> : null,
+                    <input
+                      type="checkbox"
+                      checked={rows.length > 0 && selectedRows.size === rows.length}
+                      onChange={handleSelectAll}
+                      style={{ cursor: 'pointer' }}
+                    />,
+                  )}
                 </th>
               )}
               {orderedColumns.map(renderHeaderCell)}
