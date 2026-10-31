@@ -10,6 +10,21 @@ import { buildRowTree, flattenRowTree, descendantsOf } from '../hooks/rowTree';
 
 const NO_CHILDREN = new Map<string, Row[]>();
 
+/** The section key of a table without sections. */
+const UNGROUPED = '\0ungrouped';
+
+/** What a drag carries. */
+interface RowDrag {
+  /** Top-level rows: a section move writes these, their sub-items follow. */
+  rowIds: string[];
+  followIds: string[];
+  /** The rows that can change parent. */
+  movableIds: string[];
+  /** Of those, the ones that lie under a parent now. */
+  nestedIds: string[];
+  sourceKey: string;
+}
+
 export interface TableViewProps {
   columns: Column[];
   rows: Row[];
@@ -75,6 +90,22 @@ export interface TableViewProps {
    */
   onFoldAll?: (state: { collapsedGroups: string[]; collapsedParents: string[] }) => void;
   onCreateSubItem?: (parentRowId: string) => void;
+  /**
+   * Move rows under another parent by dragging them by their grip, sub-items
+   * included. Dropped on a parent row, or on one of its sub-items, `parentRowId`
+   * is that parent; dropped on the section around them, it is null and the rows
+   * are top-level rows again. Without it a sub-item has no grip.
+   */
+  onMoveRows?: (rowIds: string[], parentRowId: string | null) => void;
+  /**
+   * Which rows can hold others. Defaults to the rows that have sub-items; pass it
+   * when a parent can be told apart otherwise, so one whose sub-items are all
+   * filtered out still takes a drop. A row that can hold others is never moved
+   * under another, so parents do not nest.
+   */
+  canHoldRows?: (row: Row) => boolean;
+  /** Tooltip and accessible name of a row's grip. */
+  rowGripLabel?: string;
   /**
    * A value a parent row shows in a column in place of its own cell, computed
    * from its direct children (a sum of their amounts, for example). Asked for
@@ -177,6 +208,9 @@ export function TableView({
   onExpandRow,
   onCollapseRow,
   onFoldAll,
+  onMoveRows,
+  canHoldRows,
+  rowGripLabel = 'Drag to move',
   onCreateSubItem,
   getSubItemSummary,
   getSubItemSummaryNote,
@@ -254,8 +288,11 @@ export function TableView({
   const resizeCurrentWidth = useRef(0);
   // Dragging rows between groups: the row whose grip is held, the rows on the move, the group under them.
   const [armedRowId, setArmedRowId] = useState<string | null>(null);
-  const [rowDrag, setRowDrag] = useState<{ rowIds: string[]; followIds: string[]; sourceKey: string } | null>(null);
+  const [rowDrag, setRowDrag] = useState<RowDrag | null>(null);
+  // The section under the dragged rows; `UNGROUPED` is the body of a table without sections.
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null);
+  // The parent row that takes the drop, whichever of its rows is under the pointer.
+  const [dragOverRow, setDragOverRow] = useState<string | null>(null);
 
   // Sort columns based on columnOrder prop if provided
   const orderedColumns = useMemo(() => {
@@ -401,26 +438,55 @@ export function TableView({
     setArmedRowId(null);
     setRowDrag(null);
     setDragOverGroup(null);
+    setDragOverRow(null);
   }, []);
 
-  const handleRowDragStart = (e: React.DragEvent, rowId: string, sourceKey: string) => {
-    if (!canDragRows || armedRowId !== rowId) {
+  const canMoveRows = subItemsEnabled && !readOnly && !!onMoveRows;
+  const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
+  const holdsRows = (row: Row) => (canHoldRows ? canHoldRows(row) : rowChildrenMap.has(row.id));
+  const parentOf = (row: Row) => (row.parentRowId ? rowById.get(row.parentRowId) : undefined);
+
+  /** The row that takes a drop on `row`: itself when it holds rows, else the parent it lies under. */
+  const holderOf = (row: Row): Row | null => {
+    if (holdsRows(row)) return row;
+    const parent = parentOf(row);
+    return parent && holdsRows(parent) ? parent : null;
+  };
+
+  /** Of the dragged rows, the ones a drop on `holder` would really move. */
+  const idsMovingInto = (drag: RowDrag, holder: Row) =>
+    drag.movableIds.filter((id) => rowById.get(id)?.parentRowId !== holder.id);
+
+  const handleRowDragStart = (e: React.DragEvent, row: Row, sourceKey: string) => {
+    if (armedRowId !== row.id) {
       e.preventDefault();
       return;
     }
-    // Dragging one of several selected rows takes the whole selection along. Only
-    // top-level rows are written: a child follows its parent into the new group.
-    const rowIds = selectedRows.has(rowId)
-      ? topLevelRows.filter((r) => selectedRows.has(r.id)).map((r) => r.id)
-      : [rowId];
+    // Dragging one of several selected rows takes the whole selection along.
+    const picked = selectedRows.has(row.id) ? rows.filter((r) => selectedRows.has(r.id)) : [row];
+    const topLevel = new Set(topLevelRows.map((r) => r.id));
+    // Only top-level rows are written: a child follows its parent into the new group.
+    const rowIds = picked.filter((r) => topLevel.has(r.id)).map((r) => r.id);
     const followIds = rowIds.flatMap((id) => descendantsOf(id, rowChildrenMap).map((r) => r.id));
+    // A parent held by its grip moves between sections only.
+    const movable = canMoveRows && !holdsRows(row) ? picked.filter((r) => !holdsRows(r)) : [];
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', rowId);
-    setRowDrag({ rowIds, followIds, sourceKey });
+    e.dataTransfer.setData('text/plain', row.id);
+    setRowDrag({
+      rowIds,
+      followIds,
+      movableIds: movable.map((r) => r.id),
+      nestedIds: movable.filter((r) => !topLevel.has(r.id)).map((r) => r.id),
+      sourceKey,
+    });
   };
 
+  /** Its own section takes sub-items out of their parent; another section takes every dragged row, when it can be written. */
+  const sectionTakesDrop = (drag: RowDrag, groupKey: string) =>
+    groupKey === drag.sourceKey ? drag.nestedIds.length > 0 : canDragRows && drag.rowIds.length + drag.nestedIds.length > 0;
+
   const handleGroupDragOver = (e: React.DragEvent, groupKey: string) => {
-    if (!rowDrag || groupKey === rowDrag.sourceKey) return;
+    if (!rowDrag || !sectionTakesDrop(rowDrag, groupKey)) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     if (dragOverGroup !== groupKey) setDragOverGroup(groupKey);
@@ -429,27 +495,68 @@ export function TableView({
   const handleGroupDragLeave = (e: React.DragEvent, groupKey: string) => {
     if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
     setDragOverGroup((current) => (current === groupKey ? null : current));
+    setDragOverRow(null);
   };
 
   const handleGroupDrop = (e: React.DragEvent, groupKey: string) => {
-    if (!rowDrag || !groupColumn || groupKey === rowDrag.sourceKey) return;
+    if (!rowDrag || !sectionTakesDrop(rowDrag, groupKey)) return;
     e.preventDefault();
-    for (const rowId of rowDrag.rowIds) {
-      const row = rows.find((r) => r.id === rowId);
-      if (!row) continue;
-      const move = valueForGroupMove(groupColumn.type, row.cells[groupColumn.id], rowDrag.sourceKey, groupKey);
-      if (move) onCellChange?.(rowId, groupColumn.id, move.value);
+    if (groupColumn && groupKey !== rowDrag.sourceKey) {
+      for (const rowId of [...rowDrag.rowIds, ...rowDrag.nestedIds]) {
+        const row = rowById.get(rowId);
+        if (!row) continue;
+        const move = valueForGroupMove(groupColumn.type, row.cells[groupColumn.id], rowDrag.sourceKey, groupKey);
+        if (move) onCellChange?.(rowId, groupColumn.id, move.value);
+      }
+    }
+    if (rowDrag.nestedIds.length > 0) onMoveRows?.(rowDrag.nestedIds, null);
+    endRowDrag();
+  };
+
+  // A row inside a section: a drop on a parent never reaches the section around it,
+  // which would write the grouped column on top of the move.
+  const handleRowDragOver = (e: React.DragEvent, row: Row) => {
+    if (!rowDrag || rowDrag.movableIds.length === 0) return;
+    const holder = holderOf(row);
+    if (!holder) {
+      setDragOverRow(null);
+      return;
+    }
+    e.stopPropagation();
+    setDragOverGroup(null);
+    if (idsMovingInto(rowDrag, holder).length === 0) {
+      setDragOverRow(null);
+      return;
+    }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverRow !== holder.id) setDragOverRow(holder.id);
+  };
+
+  const handleRowDrop = (e: React.DragEvent, row: Row) => {
+    if (!rowDrag || rowDrag.movableIds.length === 0) return;
+    const holder = holderOf(row);
+    if (!holder) return;
+    e.stopPropagation();
+    const ids = idsMovingInto(rowDrag, holder);
+    if (ids.length > 0) {
+      e.preventDefault();
+      onMoveRows?.(ids, holder.id);
     }
     endRowDrag();
   };
 
-  const renderRowGrip = (rowId: string, groupKey: string | undefined) =>
-    canDragRows && groupKey !== undefined ? (
+  /** A top-level row moves between sections; any row that is no parent itself can change parent. */
+  const rowCanBeDragged = (row: Row, depth: number, groupKey: string | undefined) =>
+    (canDragRows && groupKey !== undefined && depth === 0) || (canMoveRows && !holdsRows(row));
+
+  const renderRowGrip = (rowId: string, draggable: boolean) =>
+    draggable ? (
       <span
         className="dt-row-grip"
         role="button"
-        aria-label="Drag to another group"
-        title="Drag to another group"
+        aria-label={rowGripLabel}
+        title={rowGripLabel}
         onMouseDown={(e) => {
           e.stopPropagation();
           setArmedRowId(rowId);
@@ -971,16 +1078,27 @@ export function TableView({
     const isRowActive =
       enableKeyboardNav && activeCell !== null && rowIndex !== undefined && activeCell.rowIndex === rowIndex;
 
+    const canDrag = rowCanBeDragged(row, depth, groupKey);
+
     return (
       <tr
         key={row.id}
         data-row-id={row.id}
         data-row-active={isRowActive || undefined}
         data-row-depth={subItemsEnabled ? depth : undefined}
-        className={rowDrag?.rowIds.includes(row.id) || rowDrag?.followIds.includes(row.id) ? 'dt-row-dragging' : undefined}
-        draggable={(canDragRows && groupKey !== undefined && armedRowId === row.id) || undefined}
-        onDragStart={canDragRows && groupKey !== undefined ? (e) => handleRowDragStart(e, row.id, groupKey) : undefined}
-        onDragEnd={canDragRows ? endRowDrag : undefined}
+        data-row-selected={selectedRows.has(row.id) || undefined}
+        className={
+          [
+            rowDrag?.rowIds.includes(row.id) || rowDrag?.followIds.includes(row.id) || rowDrag?.movableIds.includes(row.id) ? 'dt-row-dragging' : '',
+            dragOverRow === row.id ? 'dt-row-drop-target' : '',
+            dragOverRow !== null && dragOverRow === row.parentRowId ? 'dt-row-drop-target-child' : '',
+          ].filter(Boolean).join(' ') || undefined
+        }
+        draggable={(canDrag && armedRowId === row.id) || undefined}
+        onDragStart={canDrag ? (e) => handleRowDragStart(e, row, groupKey ?? UNGROUPED) : undefined}
+        onDragEnd={canDrag ? endRowDrag : undefined}
+        onDragOver={canMoveRows ? (e) => handleRowDragOver(e, row) : undefined}
+        onDrop={canMoveRows ? (e) => handleRowDrop(e, row) : undefined}
         style={{
           backgroundColor: selectedRows.has(row.id)
             ? 'var(--dt-bg-selected)'
@@ -998,7 +1116,7 @@ export function TableView({
               position: 'relative',
             }}
           >
-            {renderRowGrip(row.id, groupKey)}
+            {renderRowGrip(row.id, canDrag)}
             <input
               type="checkbox"
               checked={selectedRows.has(row.id)}
@@ -1034,7 +1152,7 @@ export function TableView({
                 position: 'relative',
               }}
             >
-              {isFirstColumn && !onSelectionChange && renderRowGrip(row.id, groupKey)}
+              {isFirstColumn && !onSelectionChange && renderRowGrip(row.id, canDrag)}
               <div
                 style={{
                   display: 'flex',
@@ -1346,6 +1464,7 @@ export function TableView({
           z-index: 1;
         }
         tr:hover .dt-row-grip,
+        tr[data-row-selected] .dt-row-grip,
         tr.dt-row-dragging .dt-row-grip {
           opacity: 1;
         }
@@ -1359,6 +1478,14 @@ export function TableView({
         tr.dt-row-dragging {
           opacity: 0.45;
         }
+        tr.dt-row-drop-target,
+        tr.dt-row-drop-target-child {
+          background-color: var(--dt-bg-hover) !important;
+        }
+        tr.dt-row-drop-target {
+          outline: 2px solid var(--dt-accent-primary);
+          outline-offset: -2px;
+        }
         .dt-group-section {
           border-radius: var(--dt-border-radius-sm, 6px);
           outline: 2px solid transparent;
@@ -1368,6 +1495,10 @@ export function TableView({
         .dt-group-section.dt-group-drop-target {
           outline-color: var(--dt-accent-primary);
           background-color: var(--dt-bg-hover);
+        }
+        tbody.dt-group-drop-target {
+          outline: 2px solid var(--dt-accent-primary);
+          outline-offset: -2px;
         }
         .dt-drag-handle {
           opacity: 0;
@@ -1451,9 +1582,9 @@ export function TableView({
                     className={`dt-group-section${dragOverGroup === group.value ? ' dt-group-drop-target' : ''}`}
                     data-group-key={group.value}
                     style={{ marginBottom: '20px' }}
-                    onDragOver={canDragRows ? (e) => handleGroupDragOver(e, group.value) : undefined}
-                    onDragLeave={canDragRows ? (e) => handleGroupDragLeave(e, group.value) : undefined}
-                    onDrop={canDragRows ? (e) => handleGroupDrop(e, group.value) : undefined}
+                    onDragOver={canDragRows || canMoveRows ? (e) => handleGroupDragOver(e, group.value) : undefined}
+                    onDragLeave={canDragRows || canMoveRows ? (e) => handleGroupDragLeave(e, group.value) : undefined}
+                    onDrop={canDragRows || canMoveRows ? (e) => handleGroupDrop(e, group.value) : undefined}
                   >
                     <GroupHeader
                       label={group.label}
@@ -1489,8 +1620,7 @@ export function TableView({
                         <tbody>
                           {flatRows.map(({ row, depth, hasChildren }) => {
                             const idx = runningIndex++;
-                            // Only a top-level row can be dragged into another group; its children follow it.
-                            return renderDataRow(row, depth, hasChildren, idx, depth === 0 ? group.value : undefined);
+                            return renderDataRow(row, depth, hasChildren, idx, group.value);
                           })}
                         </tbody>
                       </table>
@@ -1664,7 +1794,12 @@ export function TableView({
               )}
             </tr>
           </thead>
-          <tbody>
+          <tbody
+            className={dragOverGroup === UNGROUPED ? 'dt-group-drop-target' : undefined}
+            onDragOver={canMoveRows ? (e) => handleGroupDragOver(e, UNGROUPED) : undefined}
+            onDragLeave={canMoveRows ? (e) => handleGroupDragLeave(e, UNGROUPED) : undefined}
+            onDrop={canMoveRows ? (e) => handleGroupDrop(e, UNGROUPED) : undefined}
+          >
             {/* Flat or hierarchical rendering (ungrouped only) */}
             {flattenedRows.map(({ row, depth, hasChildren }, idx) =>
               renderDataRow(row, depth, hasChildren, idx)

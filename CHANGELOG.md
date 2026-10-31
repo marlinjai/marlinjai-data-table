@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`@marlinjai/data-table-react`** 0.9.0: `onMoveRows`, `canHoldRows` and `rowGripLabel` on `TableView`. Every row that is no
+  parent gets a grip, sub-items too, and moves by dragging: onto a parent or one of its sub-items to lie under it, onto
+  the section around them to leave its parent, the selection along with it. A selected row shows its grip without hovering.
 - **`@marlinjai/data-table-react`** 0.8.0: `onFoldAll` on `TableView`. With it, "Collapse all" and "Expand all" in a grouped
   table with sub-items fold the parents along with the sections, in one call, so the consumer
   stores both in one write. Without it the control folds sections only, as before.
