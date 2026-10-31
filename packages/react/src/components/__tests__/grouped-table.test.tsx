@@ -250,3 +250,176 @@ describe('all groups are folded and unfolded at once', () => {
     expect(foldAll(container)).toBeNull();
   });
 });
+
+describe('moving rows under another parent by dragging', () => {
+  /** Two groups with receipts and a loose receipt in one section, a second section beside it. */
+  function nested() {
+    const f = fixture();
+    const base = { tableId: 't' };
+    const rows = [
+      { ...base, id: 'g1', cells: { name: 'Group one', cat: 'software' } },
+      { ...base, id: 'a', parentRowId: 'g1', cells: { name: 'A', cat: 'software' } },
+      { ...base, id: 'b', parentRowId: 'g1', cells: { name: 'B', cat: 'software' } },
+      { ...base, id: 'g2', cells: { name: 'Group two', cat: 'software' } },
+      { ...base, id: 'c', parentRowId: 'g2', cells: { name: 'C', cat: 'software' } },
+      { ...base, id: 'loose', cells: { name: 'Loose', cat: 'software' } },
+      { ...base, id: 'meal', cells: { name: 'Dinner', cat: 'meals' } },
+    ] as unknown as Row[];
+    return { ...f, rows, subItemsConfig: { enabled: true } };
+  }
+
+  function grab(container: HTMLElement, rowId: string) {
+    const dt = dataTransfer();
+    const row = rowEl(container, rowId);
+    fireEvent.mouseDown(row.querySelector('.dt-row-grip') as HTMLElement);
+    fireEvent.dragStart(row, { dataTransfer: dt });
+    return dt;
+  }
+
+  it('a sub-item has a grip, and drops on another parent without writing the section', () => {
+    const f = nested();
+    const onMoveRows = vi.fn();
+    const onCellChange = vi.fn();
+    const { container } = render(<TableView {...f} onCellChange={onCellChange} onMoveRows={onMoveRows} />);
+
+    const dt = grab(container, 'a');
+    fireEvent.dragOver(rowEl(container, 'g2'), { dataTransfer: dt });
+    expect(rowEl(container, 'g2').className).toContain('dt-row-drop-target');
+    expect(rowEl(container, 'c').className).toContain('dt-row-drop-target-child');
+    expect(section(container, 'software').className).not.toContain('dt-group-drop-target');
+    fireEvent.drop(rowEl(container, 'g2'), { dataTransfer: dt });
+
+    expect(onMoveRows.mock.calls).toEqual([[['a'], 'g2']]);
+    expect(onCellChange).not.toHaveBeenCalled();
+    expect(container.querySelector('.dt-row-drop-target')).toBeNull();
+    expect(container.querySelector('.dt-row-dragging')).toBeNull();
+  });
+
+  it('a drop on a sub-item counts as a drop on its parent', () => {
+    const f = nested();
+    const onMoveRows = vi.fn();
+    const { container } = render(<TableView {...f} onMoveRows={onMoveRows} />);
+    const dt = grab(container, 'loose');
+    fireEvent.dragOver(rowEl(container, 'c'), { dataTransfer: dt });
+    fireEvent.drop(rowEl(container, 'c'), { dataTransfer: dt });
+    expect(onMoveRows.mock.calls).toEqual([[['loose'], 'g2']]);
+  });
+
+  it('takes the selection along across parents, and leaves out rows already there', () => {
+    const f = nested();
+    const onMoveRows = vi.fn();
+    const { container } = render(
+      <TableView {...f} onMoveRows={onMoveRows} selectedRows={new Set(['a', 'c', 'loose'])} onSelectionChange={() => {}} />,
+    );
+    const dt = grab(container, 'a');
+    fireEvent.dragOver(rowEl(container, 'g2'), { dataTransfer: dt });
+    fireEvent.drop(rowEl(container, 'g2'), { dataTransfer: dt });
+    expect(onMoveRows.mock.calls).toEqual([[['a', 'loose'], 'g2']]);
+  });
+
+  it('a drop on the parent the row already lies under does nothing', () => {
+    const f = nested();
+    const onMoveRows = vi.fn();
+    const onCellChange = vi.fn();
+    const { container } = render(<TableView {...f} onCellChange={onCellChange} onMoveRows={onMoveRows} />);
+    const dt = grab(container, 'a');
+    fireEvent.dragOver(rowEl(container, 'b'), { dataTransfer: dt });
+    expect(container.querySelector('.dt-row-drop-target')).toBeNull();
+    fireEvent.drop(rowEl(container, 'b'), { dataTransfer: dt });
+    expect(onMoveRows).not.toHaveBeenCalled();
+    expect(onCellChange).not.toHaveBeenCalled();
+  });
+
+  it('a parent does not go under another parent: it only moves between sections', () => {
+    const f = nested();
+    const onMoveRows = vi.fn();
+    const onCellChange = vi.fn();
+    const { container } = render(<TableView {...f} onCellChange={onCellChange} onMoveRows={onMoveRows} />);
+    const dt = grab(container, 'g1');
+    fireEvent.dragOver(rowEl(container, 'g2'), { dataTransfer: dt });
+    expect(container.querySelector('.dt-row-drop-target')).toBeNull();
+    fireEvent.drop(section(container, 'meals'), { dataTransfer: dt });
+    expect(onMoveRows).not.toHaveBeenCalled();
+    expect(onCellChange.mock.calls).toEqual([['g1', 'cat', 'meals']]);
+  });
+
+  it('a sub-item dropped in its own section leaves its parent, on a loose row too', () => {
+    const f = nested();
+    const onMoveRows = vi.fn();
+    const onCellChange = vi.fn();
+    const { container } = render(<TableView {...f} onCellChange={onCellChange} onMoveRows={onMoveRows} />);
+    const dt = grab(container, 'a');
+    fireEvent.dragOver(rowEl(container, 'loose'), { dataTransfer: dt });
+    expect(section(container, 'software').className).toContain('dt-group-drop-target');
+    fireEvent.drop(rowEl(container, 'loose'), { dataTransfer: dt });
+    expect(onMoveRows.mock.calls).toEqual([[['a'], null]]);
+    expect(onCellChange).not.toHaveBeenCalled();
+  });
+
+  it('a sub-item dropped in another section leaves its parent and takes that section’s value, written first', () => {
+    const f = nested();
+    const calls: string[] = [];
+    const { container } = render(
+      <TableView {...f} onCellChange={() => calls.push('cell')} onMoveRows={() => calls.push('move')} />,
+    );
+    const dt = grab(container, 'a');
+    fireEvent.dragOver(section(container, 'meals'), { dataTransfer: dt });
+    fireEvent.drop(section(container, 'meals'), { dataTransfer: dt });
+    expect(calls).toEqual(['cell', 'move']);
+  });
+
+  it('canHoldRows makes a parent of a row whose sub-items are all filtered out', () => {
+    const f = nested();
+    const onMoveRows = vi.fn();
+    const rows = f.rows.filter((r) => r.id !== 'c');
+    const { container } = render(<TableView {...f} rows={rows} onMoveRows={onMoveRows} canHoldRows={(r) => r.id.startsWith('g')} />);
+    const dt = grab(container, 'a');
+    fireEvent.dragOver(rowEl(container, 'g2'), { dataTransfer: dt });
+    fireEvent.drop(rowEl(container, 'g2'), { dataTransfer: dt });
+    expect(onMoveRows.mock.calls).toEqual([[['a'], 'g2']]);
+  });
+
+  it('a drag let go outside leaves nothing behind, and the next drag starts clean', () => {
+    const f = nested();
+    const onMoveRows = vi.fn();
+    const { container } = render(<TableView {...f} onMoveRows={onMoveRows} />);
+    const dt = grab(container, 'a');
+    fireEvent.dragOver(rowEl(container, 'g2'), { dataTransfer: dt });
+    fireEvent.dragEnd(rowEl(container, 'a'), { dataTransfer: dt });
+    expect(container.querySelector('.dt-row-drop-target')).toBeNull();
+    expect(onMoveRows).not.toHaveBeenCalled();
+    const again = grab(container, 'b');
+    fireEvent.drop(rowEl(container, 'g2'), { dataTransfer: again });
+    expect(onMoveRows.mock.calls).toEqual([[['b'], 'g2']]);
+  });
+
+  it('without onMoveRows a sub-item has no grip, and a table with sections behaves as before', () => {
+    const f = nested();
+    const { container } = render(<TableView {...f} onCellChange={() => {}} />);
+    expect(rowEl(container, 'a').querySelector('.dt-row-grip')).toBeNull();
+    expect(rowEl(container, 'loose').querySelector('.dt-row-grip')).not.toBeNull();
+  });
+
+  it('works without sections: on a parent, and back to the top level in the table body', () => {
+    const f = nested();
+    const onMoveRows = vi.fn();
+    const { container } = render(<TableView {...f} groupConfig={undefined} onMoveRows={onMoveRows} />);
+    const dt = grab(container, 'a');
+    fireEvent.dragOver(rowEl(container, 'g2'), { dataTransfer: dt });
+    fireEvent.drop(rowEl(container, 'g2'), { dataTransfer: dt });
+    const out = grab(container, 'c');
+    fireEvent.dragOver(rowEl(container, 'loose'), { dataTransfer: out });
+    expect(container.querySelector('tbody.dt-group-drop-target')).not.toBeNull();
+    fireEvent.drop(rowEl(container, 'loose'), { dataTransfer: out });
+    expect(onMoveRows.mock.calls).toEqual([[['a'], 'g2'], [['c'], null]]);
+  });
+
+  it('shows the grip of a selected row without hovering, with the label given', () => {
+    const f = nested();
+    const { container } = render(
+      <TableView {...f} onMoveRows={() => {}} rowGripLabel="Ziehen zum Verschieben" selectedRows={new Set(['a'])} onSelectionChange={() => {}} />,
+    );
+    expect(rowEl(container, 'a').getAttribute('data-row-selected')).toBe('true');
+    expect(rowEl(container, 'a').querySelector('.dt-row-grip')?.getAttribute('title')).toBe('Ziehen zum Verschieben');
+  });
+});
