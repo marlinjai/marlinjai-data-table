@@ -99,7 +99,7 @@ export interface TableViewProps {
    * ids under that parent as shown, top to bottom, after the drop.
    */
   onMoveRows?: (rowIds: string[], parentRowId: string | null, order?: string[]) => void;
-  /** Pause `onMoveRows` for a moment: the grips leave, the column they sit in stays. */
+  /** Pause every move by grip for a moment, between sections too: the grips leave, the column they sit in stays. */
   moveRowsDisabled?: boolean;
   /**
    * Let sub-items be put in order under their parent: by dropping them between
@@ -439,7 +439,8 @@ export function TableView({
   // Rows can be dragged from one group into another when the grouped column can be
   // written from a group's key. The drop writes that column, the same as editing the cell.
   const groupColumn = isGrouped ? orderedColumns.find((c) => c.id === groupConfig?.columnId) : undefined;
-  const canDragRows = !!groupColumn && !readOnly && !!onCellChange && canMoveBetweenGroups(groupColumn.type);
+  const sectionMovesWritable = !!groupColumn && !readOnly && !!onCellChange && canMoveBetweenGroups(groupColumn.type);
+  const canDragRows = sectionMovesWritable && !moveRowsDisabled;
 
   // The row is draggable only while its grip is held, so text in cells stays selectable.
   useEffect(() => {
@@ -459,7 +460,7 @@ export function TableView({
 
   const canMoveRows = subItemsEnabled && !readOnly && !!onMoveRows && !moveRowsDisabled;
   // Space for the grips is kept on every row, so the table does not shift while they come and go.
-  const hasRowGrips = canDragRows || (subItemsEnabled && !readOnly && !!onMoveRows);
+  const hasRowGrips = sectionMovesWritable || (subItemsEnabled && !readOnly && !!onMoveRows);
   const canReorderRows = canMoveRows && reorderSubItems && sorts.length === 0;
   const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
   const holdsRows = (row: Row) => (canHoldRows ? canHoldRows(row) : rowChildrenMap.has(row.id));

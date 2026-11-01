@@ -373,6 +373,15 @@ describe('the space for the grips', () => {
     expect(grip.closest('td')).toBe(rowEl(container, 'trip').querySelectorAll('td')[0]);
   });
 
+  it('pausing the moves also closes the move between sections, and keeps the column', () => {
+    const table = (moveRowsDisabled: boolean) => <TableView {...fixture()} onCellChange={() => {}} moveRowsDisabled={moveRowsDisabled} {...selectable} />;
+    const { container, rerender } = render(table(false));
+    expect(rowEl(container, 'trip').querySelector('.dt-row-grip')).not.toBeNull();
+    rerender(table(true));
+    expect(rowEl(container, 'trip').querySelector('.dt-row-grip')).toBeNull();
+    expect(container.querySelector('.dt-select-col-grips')).not.toBeNull();
+  });
+
   it('pausing the moves takes the grips away and keeps the column, and they come back', () => {
     const f = { ...fixture(), onMoveRows: vi.fn(), ...selectable };
     const table = (moveRowsDisabled: boolean) => <TableView {...f} moveRowsDisabled={moveRowsDisabled} />;
