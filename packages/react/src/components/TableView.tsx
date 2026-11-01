@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef, useEffect, useMemo } from 'react';
+import React, { memo, useCallback, useState, useRef, useEffect, useMemo } from 'react';
 import type { Column, Row, CellValue, SelectOption, QuerySort, ColumnType, FileReference, SubItemsConfig, GroupConfig, FooterConfig, BorderConfig, TextAlignment } from '@marlinjai/data-table-core';
 import { CellRenderer } from './cells/CellRenderer';
 import { GroupHeader } from './GroupHeader';
@@ -9,6 +9,20 @@ import { useDragAndDrop } from '../hooks/useDragAndDrop';
 import { buildRowTree, flattenRowTree, descendantsOf } from '../hooks/rowTree';
 
 const NO_CHILDREN = new Map<string, Row[]>();
+const NO_OPTIONS = new Map<string, SelectOption[]>();
+
+/**
+ * One row of the table. `deps` is everything the row draws from: while they stay
+ * the same the row stays as it is, so a change to one record redraws that record
+ * and no other. What a row calls goes through `rowHandlers`, read when the event
+ * fires, so a row that stayed never calls an old handler.
+ */
+const TableRow = memo(
+  function TableRow({ draw }: { draw: () => React.ReactNode; deps: readonly unknown[] }) {
+    return <>{draw()}</>;
+  },
+  (before, after) => before.deps.length === after.deps.length && before.deps.every((dep, i) => Object.is(dep, after.deps[i]))
+);
 
 /** The section key of a table without sections. */
 const UNGROUPED = '\0ungrouped';
@@ -191,7 +205,7 @@ const COLUMN_TYPES: { value: ColumnType; label: string; icon: string }[] = [
 export function TableView({
   columns,
   rows,
-  selectOptions = new Map(),
+  selectOptions = NO_OPTIONS,
   onCellChange,
   readOnly = false,
   onAddRow,
@@ -632,6 +646,7 @@ export function TableView({
   // Update widths when columns change
   useEffect(() => {
     setColumnWidths((prev) => {
+      if (columns.every((col) => prev.has(col.id))) return prev;
       const map = new Map(prev);
       columns.forEach((col) => {
         if (!map.has(col.id)) {
@@ -1143,6 +1158,37 @@ export function TableView({
     );
   };
 
+  const rowHandlers = useRef({ handleRowDragStart, endRowDrag, handleRowDragOver, handleRowDrop, handleSelectRow, handleToggleExpand, handleCellClick, handleCellChange, onRowOpen, onDeleteRow });
+  rowHandlers.current = { handleRowDragStart, endRowDrag, handleRowDragOver, handleRowDrop, handleSelectRow, handleToggleExpand, handleCellClick, handleCellChange, onRowOpen, onDeleteRow };
+
+  // What every row draws from alike. The functions among it are handed down into the cells as they are.
+  const sharedRowDeps = [
+    orderedColumns,
+    columnWidths,
+    selectOptions,
+    readOnly,
+    subItemsEnabled,
+    enableKeyboardNav,
+    borderConfig,
+    hasRowGrips,
+    rowGripLabel,
+    canMoveRows,
+    !!onSelectionChange,
+    !!onDeleteRow,
+    !!onRowOpen,
+    !!onAddProperty,
+    onCreateSubItem,
+    onCreateSelectOption,
+    onUpdateSelectOption,
+    onDeleteSelectOption,
+    onUploadFile,
+    onDeleteFile,
+    onSearchRelationRows,
+    onGetRelationRowTitle,
+    getSubItemSummary,
+    getSubItemSummaryNote,
+  ];
+
   const renderDataRow = (row: Row, depth: number, hasChildren: boolean, rowIndex?: number, groupKey?: string) => {
     const isExpanded = !localCollapsedParents.has(row.id);
     const indentPx = depth * 24; // 24px per nesting level
@@ -1150,31 +1196,33 @@ export function TableView({
     // The keyboard-focused row gets a subtle highlight (checkbox selection wins).
     const isRowActive =
       enableKeyboardNav && activeCell !== null && rowIndex !== undefined && activeCell.rowIndex === rowIndex;
+    const activeColIndex = isRowActive ? activeCell.colIndex : null;
+    const isSelected = selectedRows.has(row.id);
+    const isArmed = armedRowId === row.id;
+    const rowClass =
+      [
+        rowDrag?.rowIds.includes(row.id) || rowDrag?.followIds.includes(row.id) || rowDrag?.movableIds.includes(row.id) ? 'dt-row-dragging' : '',
+        dragOverRow === row.id ? 'dt-row-drop-target' : '',
+        dragOverRow !== null && dragOverRow === row.parentRowId ? 'dt-row-drop-target-child' : '',
+        dropLine?.rowId === row.id ? `dt-row-drop-${dropLine.edge}` : '',
+      ].filter(Boolean).join(' ') || undefined;
 
     const canDrag = rowCanBeDragged(row, depth, groupKey);
 
-    return (
+    const draw = () => (
       <tr
-        key={row.id}
         data-row-id={row.id}
         data-row-active={isRowActive || undefined}
         data-row-depth={subItemsEnabled ? depth : undefined}
-        data-row-selected={selectedRows.has(row.id) || undefined}
-        className={
-          [
-            rowDrag?.rowIds.includes(row.id) || rowDrag?.followIds.includes(row.id) || rowDrag?.movableIds.includes(row.id) ? 'dt-row-dragging' : '',
-            dragOverRow === row.id ? 'dt-row-drop-target' : '',
-            dragOverRow !== null && dragOverRow === row.parentRowId ? 'dt-row-drop-target-child' : '',
-            dropLine?.rowId === row.id ? `dt-row-drop-${dropLine.edge}` : '',
-          ].filter(Boolean).join(' ') || undefined
-        }
-        draggable={(canDrag && armedRowId === row.id) || undefined}
-        onDragStart={canDrag ? (e) => handleRowDragStart(e, row, groupKey ?? UNGROUPED) : undefined}
-        onDragEnd={canDrag ? endRowDrag : undefined}
-        onDragOver={canMoveRows ? (e) => handleRowDragOver(e, row) : undefined}
-        onDrop={canMoveRows ? (e) => handleRowDrop(e, row) : undefined}
+        data-row-selected={isSelected || undefined}
+        className={rowClass}
+        draggable={(canDrag && isArmed) || undefined}
+        onDragStart={canDrag ? (e) => rowHandlers.current.handleRowDragStart(e, row, groupKey ?? UNGROUPED) : undefined}
+        onDragEnd={canDrag ? () => rowHandlers.current.endRowDrag() : undefined}
+        onDragOver={canMoveRows ? (e) => rowHandlers.current.handleRowDragOver(e, row) : undefined}
+        onDrop={canMoveRows ? (e) => rowHandlers.current.handleRowDrop(e, row) : undefined}
         style={{
-          backgroundColor: selectedRows.has(row.id)
+          backgroundColor: isSelected
             ? 'var(--dt-bg-selected)'
             : isRowActive
               ? 'var(--dt-bg-row-active, var(--dt-bg-secondary))'
@@ -1187,8 +1235,8 @@ export function TableView({
               renderRowGrip(row.id, canDrag),
               <input
                 type="checkbox"
-                checked={selectedRows.has(row.id)}
-                onChange={() => handleSelectRow(row.id)}
+                checked={isSelected}
+                onChange={() => rowHandlers.current.handleSelectRow(row.id)}
                 style={{ cursor: 'pointer' }}
               />,
             )}
@@ -1200,7 +1248,7 @@ export function TableView({
           const isLastColumn = colIndex === orderedColumns.length - 1;
           const cellBorderStyles = getCellBorderStyles(isLastColumn);
           const alignment = column.alignment ?? getDefaultAlignment(column.type);
-          const isCellActive = enableKeyboardNav && activeCell !== null && rowIndex !== undefined && activeCell.rowIndex === rowIndex && activeCell.colIndex === colIndex;
+          const isCellActive = activeColIndex === colIndex;
           const summary = subItemsEnabled ? getSubItemSummary?.(row, rowChildren, column) : undefined;
           const summaryNote = summary !== undefined && summary !== null ? getSubItemSummaryNote?.(row, rowChildren, column) : undefined;
 
@@ -1208,7 +1256,7 @@ export function TableView({
             <td
               key={column.id}
               data-cell-active={isCellActive || undefined}
-              onClick={enableKeyboardNav ? () => rowIndex !== undefined && handleCellClick(rowIndex, colIndex) : undefined}
+              onClick={enableKeyboardNav ? () => rowIndex !== undefined && rowHandlers.current.handleCellClick(rowIndex, colIndex) : undefined}
               className={isCellActive ? 'dt-cell-active' : undefined}
               style={{
                 width,
@@ -1243,7 +1291,7 @@ export function TableView({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleToggleExpand(row.id);
+                          rowHandlers.current.handleToggleExpand(row.id);
                         }}
                         style={{
                           padding: '2px',
@@ -1318,7 +1366,7 @@ export function TableView({
                   <CellRenderer
                     column={column}
                     value={summary !== undefined ? summary : row.cells[column.id]}
-                    onChange={(value) => handleCellChange(row.id, column.id, value)}
+                    onChange={(value) => rowHandlers.current.handleCellChange(row.id, column.id, value)}
                     selectOptions={selectOptions.get(column.id)}
                     readOnly={readOnly || summary !== undefined}
                     alignment={alignment}
@@ -1358,7 +1406,7 @@ export function TableView({
                     className="dt-row-open-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onRowOpen(row);
+                      rowHandlers.current.onRowOpen?.(row);
                     }}
                     style={{
                       marginLeft: '4px',
@@ -1402,7 +1450,7 @@ export function TableView({
             }}
           >
             <button
-              onClick={() => onDeleteRow(row.id)}
+              onClick={() => rowHandlers.current.onDeleteRow?.(row.id)}
               style={{
                 padding: '4px 8px',
                 border: 'none',
@@ -1419,6 +1467,14 @@ export function TableView({
           </td>
         )}
       </tr>
+    );
+
+    return (
+      <TableRow
+        key={row.id}
+        draw={draw}
+        deps={[row, depth, hasChildren, isExpanded, rowIndex, groupKey, isSelected, activeColIndex, rowClass, isArmed, canDrag, ...sharedRowDeps, ...rowChildren]}
+      />
     );
   };
 
