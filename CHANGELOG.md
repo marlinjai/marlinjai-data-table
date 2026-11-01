@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`@marlinjai/data-table-react`** 0.11.0: `reorderSubItems` on `TableView`. A row dropped on the upper or lower half of a sub-item lands before or after it, shown by a line, whether it comes from inside the group or from outside; `onMoveRows` then gets a third argument, the ids under that parent after the drop. Alt+Arrow up and down does the same on the focused row. While a column sorts the table its sort decides and this is off.
 - **`@marlinjai/data-table-react`** 0.10.0: `moveRowsDisabled` on `TableView` pauses `onMoveRows`: the grips leave, the column stays, so the table does not shift. A row's grip now has its own slot beside the checkbox instead of lying on top of the cell: the selection column is 56px wide when the rows have grips (40px on a touch screen, where rows cannot be dragged), the checkboxes of the header and the rows line up, and the grip's dots are evenly spaced.
 - **`@marlinjai/data-table-react`** 0.9.0: `onMoveRows`, `canHoldRows` and `rowGripLabel` on `TableView`. Every row that is no
   parent gets a grip, sub-items too, and moves by dragging: onto a parent or one of its sub-items to lie under it, onto

@@ -94,11 +94,20 @@ export interface TableViewProps {
    * Move rows under another parent by dragging them by their grip, sub-items
    * included. Dropped on a parent row, or on one of its sub-items, `parentRowId`
    * is that parent; dropped on the section around them, it is null and the rows
-   * are top-level rows again. Without it a sub-item has no grip.
+   * are top-level rows again. Without it a sub-item has no grip. With
+   * `reorderSubItems`, a drop between two sub-items also passes `order`: the
+   * ids under that parent as shown, top to bottom, after the drop.
    */
-  onMoveRows?: (rowIds: string[], parentRowId: string | null) => void;
-  /** Pause `onMoveRows` for a moment: the grips leave, the column they sit in stays. */
+  onMoveRows?: (rowIds: string[], parentRowId: string | null, order?: string[]) => void;
+  /** Pause every move by grip for a moment, between sections too: the grips leave, the column they sit in stays. */
   moveRowsDisabled?: boolean;
+  /**
+   * Let sub-items be put in order under their parent: by dropping them between
+   * two others, or with Alt+Arrow up and down on the focused row. The order is
+   * the caller's to keep, through `onMoveRows` and the order of `rows`. While
+   * the table is sorted by a column that sort decides and this is off.
+   */
+  reorderSubItems?: boolean;
   /**
    * Which rows can hold others. Defaults to the rows that have sub-items; pass it
    * when a parent can be told apart otherwise, so one whose sub-items are all
@@ -212,6 +221,7 @@ export function TableView({
   onFoldAll,
   onMoveRows,
   moveRowsDisabled = false,
+  reorderSubItems = false,
   canHoldRows,
   rowGripLabel = 'Drag to move',
   onCreateSubItem,
@@ -296,6 +306,8 @@ export function TableView({
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null);
   // The parent row that takes the drop, whichever of its rows is under the pointer.
   const [dragOverRow, setDragOverRow] = useState<string | null>(null);
+  // Where a drop would land between two sub-items: the row the line is drawn on, and which edge of it.
+  const [dropLine, setDropLine] = useState<{ rowId: string; edge: 'before' | 'after' } | null>(null);
 
   // Sort columns based on columnOrder prop if provided
   const orderedColumns = useMemo(() => {
@@ -427,7 +439,8 @@ export function TableView({
   // Rows can be dragged from one group into another when the grouped column can be
   // written from a group's key. The drop writes that column, the same as editing the cell.
   const groupColumn = isGrouped ? orderedColumns.find((c) => c.id === groupConfig?.columnId) : undefined;
-  const canDragRows = !!groupColumn && !readOnly && !!onCellChange && canMoveBetweenGroups(groupColumn.type);
+  const sectionMovesWritable = !!groupColumn && !readOnly && !!onCellChange && canMoveBetweenGroups(groupColumn.type);
+  const canDragRows = sectionMovesWritable && !moveRowsDisabled;
 
   // The row is draggable only while its grip is held, so text in cells stays selectable.
   useEffect(() => {
@@ -442,11 +455,13 @@ export function TableView({
     setRowDrag(null);
     setDragOverGroup(null);
     setDragOverRow(null);
+    setDropLine(null);
   }, []);
 
   const canMoveRows = subItemsEnabled && !readOnly && !!onMoveRows && !moveRowsDisabled;
   // Space for the grips is kept on every row, so the table does not shift while they come and go.
-  const hasRowGrips = canDragRows || (subItemsEnabled && !readOnly && !!onMoveRows);
+  const hasRowGrips = sectionMovesWritable || (subItemsEnabled && !readOnly && !!onMoveRows);
+  const canReorderRows = canMoveRows && reorderSubItems && sorts.length === 0;
   const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
   const holdsRows = (row: Row) => (canHoldRows ? canHoldRows(row) : rowChildrenMap.has(row.id));
   const parentOf = (row: Row) => (row.parentRowId ? rowById.get(row.parentRowId) : undefined);
@@ -501,6 +516,7 @@ export function TableView({
     if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
     setDragOverGroup((current) => (current === groupKey ? null : current));
     setDragOverRow(null);
+    setDropLine(null);
   };
 
   const handleGroupDrop = (e: React.DragEvent, groupKey: string) => {
@@ -518,6 +534,20 @@ export function TableView({
     endRowDrag();
   };
 
+  /** Where a drop on sub-item `row` lands, by the half of the row under the pointer; null when it does not place anything. */
+  const placeOnRow = (e: React.DragEvent, drag: RowDrag, row: Row, holder: Row) => {
+    if (!canReorderRows || row.id === holder.id || drag.movableIds.includes(row.id)) return null;
+    const shown = (rowChildrenMap.get(holder.id) ?? []).map((r) => r.id);
+    const rest = shown.filter((id) => !drag.movableIds.includes(id));
+    const box = e.currentTarget.getBoundingClientRect();
+    const edge: 'before' | 'after' = e.clientY < box.top + box.height / 2 ? 'before' : 'after';
+    const at = rest.indexOf(row.id) + (edge === 'after' ? 1 : 0);
+    const order = [...rest.slice(0, at), ...drag.movableIds, ...rest.slice(at)];
+    // Dropped where they already are: nothing to place.
+    if (order.length === shown.length && order.every((id, i) => id === shown[i])) return null;
+    return { edge, order };
+  };
+
   // A row inside a section: a drop on a parent never reaches the section around it,
   // which would write the grouped column on top of the move.
   const handleRowDragOver = (e: React.DragEvent, row: Row) => {
@@ -525,17 +555,21 @@ export function TableView({
     const holder = holderOf(row);
     if (!holder) {
       setDragOverRow(null);
+      setDropLine(null);
       return;
     }
     e.stopPropagation();
     setDragOverGroup(null);
-    if (idsMovingInto(rowDrag, holder).length === 0) {
-      setDragOverRow(null);
-      return;
+    const place = placeOnRow(e, rowDrag, row, holder);
+    const entering = idsMovingInto(rowDrag, holder).length > 0;
+    const nextRow = entering ? holder.id : null;
+    if (dragOverRow !== nextRow) setDragOverRow(nextRow);
+    if (dropLine?.rowId !== (place ? row.id : undefined) || dropLine?.edge !== place?.edge) {
+      setDropLine(place ? { rowId: row.id, edge: place.edge } : null);
     }
+    if (!entering && !place) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    if (dragOverRow !== holder.id) setDragOverRow(holder.id);
   };
 
   const handleRowDrop = (e: React.DragEvent, row: Row) => {
@@ -543,8 +577,12 @@ export function TableView({
     const holder = holderOf(row);
     if (!holder) return;
     e.stopPropagation();
+    const place = placeOnRow(e, rowDrag, row, holder);
     const ids = idsMovingInto(rowDrag, holder);
-    if (ids.length > 0) {
+    if (place) {
+      e.preventDefault();
+      onMoveRows?.(rowDrag.movableIds, holder.id, place.order);
+    } else if (ids.length > 0) {
       e.preventDefault();
       onMoveRows?.(ids, holder.id);
     }
@@ -828,6 +866,24 @@ export function TableView({
       const maxRow = visibleDataRows.length - 1;
       const maxCol = orderedColumns.length - 1;
 
+      // Alt+Arrow up/down: the keyboard's way to put a sub-item in order, one place at a time.
+      if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && canReorderRows && activeCell) {
+        const row = visibleDataRows[activeCell.rowIndex];
+        const parentId = row?.parentRowId;
+        const siblings = parentId ? (rowChildrenMap.get(parentId) ?? []).map((r) => r.id) : [];
+        const from = row ? siblings.indexOf(row.id) : -1;
+        const to = from + (e.key === 'ArrowUp' ? -1 : 1);
+        if (from === -1 || !parentId) return;
+        e.preventDefault();
+        if (to < 0 || to >= siblings.length) return;
+        const order = [...siblings];
+        order.splice(from, 1);
+        order.splice(to, 0, row.id);
+        onMoveRows?.([row.id], parentId, order);
+        setActiveCell({ ...activeCell, rowIndex: activeCell.rowIndex + (to - from) });
+        return;
+      }
+
       // Shift+Arrow up/down: extend a contiguous row selection from the focused
       // row (Notion-style). The anchor is the row focused when the first
       // Shift+Arrow was pressed; the selection is always anchor..focus.
@@ -916,7 +972,7 @@ export function TableView({
           break;
       }
     },
-    [activeCell, isEditingCell, visibleDataRows, orderedColumns.length, readOnly, onSelectionChange]
+    [activeCell, isEditingCell, visibleDataRows, orderedColumns.length, readOnly, onSelectionChange, canReorderRows, rowChildrenMap, onMoveRows]
   );
 
   // Pre-select first cell when rows become available (only if keyboard nav enabled)
@@ -1109,6 +1165,7 @@ export function TableView({
             rowDrag?.rowIds.includes(row.id) || rowDrag?.followIds.includes(row.id) || rowDrag?.movableIds.includes(row.id) ? 'dt-row-dragging' : '',
             dragOverRow === row.id ? 'dt-row-drop-target' : '',
             dragOverRow !== null && dragOverRow === row.parentRowId ? 'dt-row-drop-target-child' : '',
+            dropLine?.rowId === row.id ? `dt-row-drop-${dropLine.edge}` : '',
           ].filter(Boolean).join(' ') || undefined
         }
         draggable={(canDrag && armedRowId === row.id) || undefined}
@@ -1521,6 +1578,12 @@ export function TableView({
         tr.dt-row-drop-target {
           outline: 2px solid var(--dt-accent-primary);
           outline-offset: -2px;
+        }
+        tr.dt-row-drop-before > td {
+          box-shadow: inset 0 2px 0 var(--dt-accent-primary);
+        }
+        tr.dt-row-drop-after > td {
+          box-shadow: inset 0 -2px 0 var(--dt-accent-primary);
         }
         .dt-group-section {
           border-radius: var(--dt-border-radius-sm, 6px);

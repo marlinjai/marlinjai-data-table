@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { createEvent, fireEvent, render } from '@testing-library/react';
 import type { CellValue, Column, Row, SelectOption } from '@marlinjai/data-table-core';
 import { TableView } from '../TableView';
 
@@ -236,6 +236,114 @@ describe('dragging between groups with sub-items', () => {
   });
 });
 
+describe('putting sub-items in order', () => {
+  // Three sub-items under one parent, a loose row beside them; each row is 40px high from its own top.
+  const rowsOf = (): Row[] => [
+    { ...fixture().rows[0], id: 'parent', parentRowId: undefined },
+    { ...fixture().rows[0], id: 'one', parentRowId: 'parent' },
+    { ...fixture().rows[0], id: 'two', parentRowId: 'parent' },
+    { ...fixture().rows[0], id: 'three', parentRowId: 'parent' },
+    { ...fixture().rows[0], id: 'loose', parentRowId: undefined },
+  ];
+  const table = (overrides: Partial<React.ComponentProps<typeof TableView>> = {}) => {
+    const onMoveRows = vi.fn();
+    const f = { ...fixture(), groupConfig: undefined, rows: rowsOf() };
+    const view = render(
+      <TableView {...f} onCellChange={() => {}} onMoveRows={onMoveRows} canHoldRows={(r) => r.id === 'parent'} reorderSubItems {...overrides} />,
+    );
+    return { ...view, onMoveRows };
+  };
+  const hover = (container: HTMLElement, from: string, over: string, half: 'upper' | 'lower') => {
+    const dt = dataTransfer();
+    const source = rowEl(container, from);
+    const target = rowEl(container, over);
+    target.getBoundingClientRect = () => ({ top: 100, height: 40 }) as DOMRect;
+    fireEvent.mouseDown(source.querySelector('.dt-row-grip') as HTMLElement);
+    fireEvent.dragStart(source, { dataTransfer: dt });
+    // jsdom's drag events carry no pointer position.
+    const at = (event: Event) => {
+      Object.defineProperty(event, 'clientY', { value: half === 'upper' ? 110 : 130 });
+      return fireEvent(target, event);
+    };
+    at(createEvent.dragOver(target, { dataTransfer: dt }));
+    return { drop: () => at(createEvent.drop(target, { dataTransfer: dt })), target };
+  };
+
+  it('the upper half of a row lands before it, the lower half after it, and a line shows which', () => {
+    const { container, onMoveRows } = table();
+    const up = hover(container, 'three', 'two', 'upper');
+    expect(up.target.classList.contains('dt-row-drop-before')).toBe(true);
+    up.drop();
+    expect(onMoveRows.mock.calls.at(-1)).toEqual([['three'], 'parent', ['one', 'three', 'two']]);
+    expect(rowEl(container, 'two').classList.contains('dt-row-drop-before')).toBe(false);
+
+    const down = hover(container, 'one', 'two', 'lower');
+    expect(down.target.classList.contains('dt-row-drop-after')).toBe(true);
+    down.drop();
+    expect(onMoveRows.mock.calls.at(-1)).toEqual([['one'], 'parent', ['two', 'one', 'three']]);
+  });
+
+  it('a drop where the row already lies places nothing', () => {
+    const { container, onMoveRows } = table();
+    const same = hover(container, 'two', 'three', 'upper');
+    expect(same.target.classList.contains('dt-row-drop-before')).toBe(false);
+    same.drop();
+    expect(onMoveRows).not.toHaveBeenCalled();
+  });
+
+  it('a row from outside lands where it is dropped', () => {
+    const { container, onMoveRows } = table();
+    hover(container, 'loose', 'two', 'upper').drop();
+    expect(onMoveRows.mock.calls).toEqual([[['loose'], 'parent', ['one', 'loose', 'two', 'three']]]);
+  });
+
+  it('several selected rows land together, in the order they are shown', () => {
+    const { container, onMoveRows } = table({ selectedRows: new Set(['one', 'two']), onSelectionChange: () => {} });
+    hover(container, 'two', 'three', 'lower').drop();
+    expect(onMoveRows.mock.calls).toEqual([[['one', 'two'], 'parent', ['three', 'one', 'two']]]);
+  });
+
+  it('a drop on the parent itself only moves the row in, it names no place', () => {
+    const { container, onMoveRows } = table();
+    hover(container, 'loose', 'parent', 'lower').drop();
+    expect(onMoveRows.mock.calls).toEqual([[['loose'], 'parent']]);
+  });
+
+  it('while a column sorts the table, its sort decides: no line, and a drop only moves the row in', () => {
+    const { container, onMoveRows } = table({ sorts: [{ columnId: 'name', direction: 'asc' }] });
+    const over = hover(container, 'loose', 'two', 'upper');
+    expect(over.target.classList.contains('dt-row-drop-before')).toBe(false);
+    over.drop();
+    expect(onMoveRows.mock.calls).toEqual([[['loose'], 'parent']]);
+  });
+
+  it('without reorderSubItems a drop on a sub-item moves the row in, as before', () => {
+    const { container, onMoveRows } = table({ reorderSubItems: false });
+    hover(container, 'loose', 'two', 'upper').drop();
+    expect(onMoveRows.mock.calls).toEqual([[['loose'], 'parent']]);
+  });
+
+  it('Alt+Arrow moves the focused sub-item one place, and stops at the ends of its group', () => {
+    const { container, onMoveRows } = table();
+    const grid = container.querySelector('.dt-table-view') as HTMLElement;
+    fireEvent.click(rowEl(container, 'two').querySelectorAll('td')[0]);
+    fireEvent.keyDown(grid, { key: 'ArrowUp', altKey: true });
+    expect(onMoveRows.mock.calls.at(-1)).toEqual([['two'], 'parent', ['two', 'one', 'three']]);
+    onMoveRows.mockClear();
+    fireEvent.click(rowEl(container, 'one').querySelectorAll('td')[0]);
+    fireEvent.keyDown(grid, { key: 'ArrowUp', altKey: true });
+    expect(onMoveRows).not.toHaveBeenCalled();
+  });
+
+  it('Alt+Arrow on a row that lies in no group leaves everything where it is', () => {
+    const { container, onMoveRows } = table();
+    const grid = container.querySelector('.dt-table-view') as HTMLElement;
+    fireEvent.click(rowEl(container, 'loose').querySelectorAll('td')[0]);
+    fireEvent.keyDown(grid, { key: 'ArrowUp', altKey: true });
+    expect(onMoveRows).not.toHaveBeenCalled();
+  });
+});
+
 describe('the space for the grips', () => {
   const selectCell = (el: Element) => el.querySelector('.dt-select-control') as HTMLElement;
   const selectable = { selectedRows: new Set<string>(), onSelectionChange: () => {} };
@@ -263,6 +371,15 @@ describe('the space for the grips', () => {
     const grip = rowEl(container, 'trip').querySelector('.dt-row-grip') as HTMLElement;
     expect(grip.classList.contains('dt-row-grip-slot')).toBe(true);
     expect(grip.closest('td')).toBe(rowEl(container, 'trip').querySelectorAll('td')[0]);
+  });
+
+  it('pausing the moves also closes the move between sections, and keeps the column', () => {
+    const table = (moveRowsDisabled: boolean) => <TableView {...fixture()} onCellChange={() => {}} moveRowsDisabled={moveRowsDisabled} {...selectable} />;
+    const { container, rerender } = render(table(false));
+    expect(rowEl(container, 'trip').querySelector('.dt-row-grip')).not.toBeNull();
+    rerender(table(true));
+    expect(rowEl(container, 'trip').querySelector('.dt-row-grip')).toBeNull();
+    expect(container.querySelector('.dt-select-col-grips')).not.toBeNull();
   });
 
   it('pausing the moves takes the grips away and keeps the column, and they come back', () => {
