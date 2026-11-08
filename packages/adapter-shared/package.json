@@ -41,8 +41,8 @@
     "@marlinjai/data-table-core": "workspace:^"
   },
   "devDependencies": {
-    "tsup": "^8.0.1",
+    "tsup": "^9.0.0",
     "typescript": "^5.3.3",
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.12"
   }
 }
