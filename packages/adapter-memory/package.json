@@ -40,7 +40,7 @@
     "@marlinjai/data-table-core": "*"
   },
   "devDependencies": {
-    "tsup": "^8.0.1",
+    "tsup": "^9.0.0",
     "typescript": "^5.3.3"
   }
 }
