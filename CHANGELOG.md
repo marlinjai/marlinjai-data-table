@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`@marlinjai/data-table-core`** 0.3.2, **`@marlinjai/data-table-adapter-shared`** 0.2.3, **`@marlinjai/data-table-adapter-d1`** 0.2.2 and **`@marlinjai/data-table-adapter-memory`** 0.2.1: patch releases with no code change, published through the `publish.yml` workflow to validate the re-created npm Trusted Publisher (OpenID Connect, no token) of each package before npm's validation deadline.
+
 ### Added
 
 - **`@marlinjai/data-table-react`** 0.12.0: a row of `TableView` redraws by its record. A row stays as it is while its record, its children, its selection, its keyboard highlight, its drag state and what the rows share (columns, widths, select options) stay the same, so changing one row of 267 draws its 20 cells instead of 5,340, and a reload that hands in the same objects draws nothing. Nothing changes for callers; to profit, hand in the same object for a row that did not change, and stable functions for `getSubItemSummary` and the select option and file callbacks.
